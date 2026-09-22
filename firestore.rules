@@ -1,0 +1,25 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /profiles/{uid} {
+      function owner() { return request.auth != null && request.auth.uid == uid; }
+      function validProfile() {
+        let p = request.resource.data;
+        let a = p.avatar;
+        return p.keys().hasAll(['username', 'avatar'])
+          && p.keys().hasOnly(['username', 'avatar'])
+          && p.username is string
+          && p.username.matches('^[A-Za-z][A-Za-z0-9_]{2,15}$')
+          && a is map
+          && a.keys().hasAll(['base', 'color', 'face', 'accessory'])
+          && a.keys().hasOnly(['base', 'color', 'face', 'accessory'])
+          && a.base in ['bean', 'cat', 'bear', 'bunny', 'blob', 'robot']
+          && a.color in ['mint', 'gold', 'rose', 'blue', 'lilac', 'peach', 'cream', 'teal']
+          && a.face in ['smile', 'wink', 'happy', 'surprised', 'sleepy', 'cheeky']
+          && a.accessory in ['none', 'glasses', 'shades', 'crown', 'bow', 'headphones'];
+      }
+      allow get: if owner();
+      allow create, update: if owner() && validProfile();
+    }
+  }
+}

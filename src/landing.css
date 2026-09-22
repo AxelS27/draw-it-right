@@ -1,0 +1,75 @@
+.header { position: relative; z-index: 1; background: #132e46b3; }
+button:disabled { cursor: wait; opacity: .65; transform: none; }
+.account-name { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.session-notice { color: #fff0cd; font-size: 13px; line-height: 1.6; margin-top: 8px; }
+.header-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.shop-link, .coin-balance { display: flex; align-items: center; justify-content: center; gap: 9px; min-height: 44px; border-radius: 12px; padding: 10px 15px; font-size: 13px; font-weight: 700; }
+.shop-link { color: #fff9ef; background: transparent; }
+.shop-link:hover { background: #ffffff14; }
+.coin-balance { color: #ffe1a0; background: #ffda8410; border: 1px solid #ffda8438; }
+.coin-balance:hover { background: #ffda8424; }
+.gold-coin { display: grid; place-items: center; flex-shrink: 0; width: 26px; height: 26px; border: 2px solid #ffe59a; border-radius: 50%; background: linear-gradient(135deg, #ffe58a, #f5b82e 65%, #dc9419); box-shadow: 0 3px 0 #ad6c17, inset 0 0 0 1px #d99420; }
+.gold-coin > span { display: grid; place-items: center; width: 18px; height: 18px; border: 1px solid #c88a20; border-radius: 50%; color: #a76913; font-size: 13px; line-height: 1; text-shadow: 0 1px 0 #ffe6a0; }
+.nav-divider { height: 24px; width: 1px; background: #ffffff24; margin: 0 3px; }
+.login-link { min-height: 44px; }
+.background-art > svg { opacity: .16; }
+.game-world { background: radial-gradient(ellipse at 50% 30%, #729caf48, transparent 65%), linear-gradient(160deg, #4c7895, #355f80 60%, #294b69); }
+.landing-stickers { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: -1; }
+.doodle-card { position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid #ffffff70; box-shadow: 5px 9px 0 #19364d40, 0 16px 30px #19364d20; border-radius: 5px; }
+.doodle-card > span:last-child { font-family: 'Fredoka', sans-serif; font-size: 14px; font-weight: 500; }
+.cat-card { width: 174px; height: 192px; left: max(4%, calc(50% - 560px)); top: 37%; background: #f5e6c8; color: #45657b; transform: rotate(-12deg); }
+.cat-card svg { width: 145px; height: 132px; }
+.tape { position: absolute; top: -12px; left: calc(50% - 30px); width: 60px; height: 25px; background: #c4dad6b3; transform: rotate(6deg); border-left: 2px dashed #ffffff60; border-right: 2px dashed #ffffff60; }
+.brush-card { width: 155px; height: 166px; right: max(5%, calc(50% - 540px)); top: 26%; background: #e6c1bd; color: #79585d; transform: rotate(11deg); gap: 19px; }
+.brush-card > svg { width: 65px; height: 65px; stroke-width: 1.6; transform: rotate(-18deg); }
+.brush-card .tape { background: #f3dfacaa; transform: rotate(-8deg); }
+.orbit-doodle { position: absolute; width: 170px; height: 140px; right: 17%; bottom: 15%; color: #b9d6c5; opacity: .65; transform: rotate(12deg); }
+.little-spark { position: absolute; font-size: 47px; }
+.spark-pink { left: 25%; bottom: 21%; color: #e6b7b3; transform: rotate(15deg); }
+.spark-gold { right: 9%; top: 56%; color: #f0cf89; font-size: 34px; }
+.login-dialog { position: fixed; inset: 0; margin: auto; max-height: calc(100svh - 32px); overflow-y: auto; }
+.auth-dialog { max-width: 420px; padding: 40px 32px 28px; text-align: center; border: 1px solid #ffffff; border-radius: 24px; box-shadow: 0 24px 90px #0c243d55; }
+.auth-dialog .dialog-close { width: 40px; height: 40px; top: 12px; right: 12px; }
+.auth-dialog .dialog-icon { width: 64px; height: 64px; margin: 4px auto 25px; background: #ffe5a6; color: #70532e; border: 1px solid #f2cf7f; box-shadow: 0 4px 0 #e8c579; }
+.auth-dialog h2 { font-size: clamp(25px, 6vw, 30px); line-height: 1.2; }
+.auth-dialog > p { font-size: 14px; }
+.auth-dialog .google-button { position: relative; min-height: 54px; padding: 14px 18px; font-size: 14px; gap: 12px; margin-top: 26px; }
+.auth-dialog .google-button > svg:last-child { display: none; }
+.auth-dialog .auth-notice { margin-top: 18px; font-size: 11px; line-height: 1.6; }
+@media (max-width: 380px) { .auth-dialog { padding: 36px 22px 24px; } }
+.shop-eyebrow { display: block; color: #587b7d; font-size: 10px; letter-spacing: 1.5px; font-weight: 700; margin-bottom: 8px; }
+.shop-dialog .dialog-icon { background: #f9e7bf; color: #8b6933; }
+.shop-preview { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 24px 0 16px; }
+.shop-preview > div { display: flex; flex-direction: column; align-items: center; gap: 13px; padding: 20px 8px 15px; border-radius: 12px; background: #e3eee7; color: #456e64; font-size: 11px; }
+.shop-preview > div:nth-child(2) { background: #f5e7c9; color: #927137; }
+.shop-preview > div:nth-child(3) { background: #f2dddb; color: #9b6866; }
+.shop-preview svg { width: 30px; height: 30px; }
+.shop-dialog .shop-footnote { font-size: 11px; }
+@media (max-width: 1000px) {
+  .cat-card { left: -35px; width: 145px; height: 165px; top: 48%; }
+  .cat-card svg { width: 120px; height: 110px; }
+  .brush-card { right: -27px; width: 130px; height: 145px; top: 32%; }
+  .doodle-card > span:last-child { font-size: 12px; }
+  .orbit-doodle { right: 12%; bottom: 12%; width: 135px; }
+}
+@media (max-width: 600px) {
+  .header { height: auto; min-height: 70px; padding: 14px 20px; flex-wrap: wrap; gap: 12px; }
+  .header-actions { gap: 6px; }
+  .shop-link, .coin-balance { padding: 9px 10px; font-size: 12px; gap: 6px; }
+  .nav-divider { display: none; }
+  .cat-card { top: auto; bottom: 105px; left: -23px; width: 111px; height: 124px; transform: rotate(-15deg); }
+  .cat-card svg { width: 92px; height: 85px; }
+  .doodle-card > span:last-child { font-size: 9px; }
+  .brush-card { top: auto; bottom: 125px; right: -22px; width: 100px; height: 112px; gap: 10px; }
+  .brush-card > svg { width: 42px; height: 42px; }
+  .orbit-doodle { display: none; }
+  .spark-pink { left: 27%; bottom: 120px; font-size: 25px; }
+  .spark-gold { right: 20%; top: 23%; font-size: 21px; }
+  .join-main { padding-top: 65px; padding-bottom: 200px; }
+}
+@media (max-width: 440px) {
+  .header { justify-content: center; gap: 10px; padding-top: 12px; padding-bottom: 10px; }
+  .header-actions { width: 100%; justify-content: center; }
+  .brand { font-size: 23px; }
+  .join-main { padding-top: 47px; }
+}
