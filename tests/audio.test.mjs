@@ -92,6 +92,30 @@ test('recordings survive screen transitions, crossfade groups, mute and resume a
     assert.equal(context.gains[1].gain.value, 0.4);
     gameAudio.play('press');
     assert.equal(context.oscillators.length, 2);
+    const signatures = new Set();
+    for (const effect of ['press', 'close', 'open', 'switch-on', 'switch-off', 'select', 'increment', 'decrement']) {
+      context.currentTime += 1;
+      const start = context.oscillators.length;
+      gameAudio.play(effect);
+      const pitches = context.oscillators.slice(start).map(node => node.frequency.value);
+      assert(pitches.length > 0, `${effect} produces feedback`);
+      const signature = pitches.join(',');
+      assert(!signatures.has(signature), `${effect} has a distinct sound`);
+      signatures.add(signature);
+      if (effect === 'close' || effect === 'switch-off') assert(pitches[0] > pitches[1]);
+      if (effect === 'open' || effect === 'switch-on') assert(pitches[0] < pitches[1]);
+      gameAudio.play(effect);
+      assert.equal(context.oscillators.length, start + pitches.length, 'rapid duplicate effects are throttled');
+    }
+    const beforeSilent = context.oscillators.length;
+    gameAudio.updatePreferences({ effects: 0 });
+    context.currentTime += 1;
+    gameAudio.play('switch-on');
+    assert.equal(context.oscillators.length, beforeSilent, 'new effects respect zero SFX volume');
+    gameAudio.updatePreferences({ effects: 40, muted: true });
+    gameAudio.play('close');
+    assert.equal(context.oscillators.length, beforeSilent, 'new effects respect mute');
+    gameAudio.updatePreferences({ muted: false });
     gameAudio.play('champion');
     assert.equal(match.plays, 1, 'fanfare does not replace or restart the recording');
     document.hidden = true;
@@ -117,7 +141,7 @@ test('recordings survive screen transitions, crossfade groups, mute and resume a
     const bgRecordings = [lobby, match];
     await new Promise(resolve => setTimeout(resolve, 850));
     assert(bgRecordings.every(audio => audio.paused));
-    context.currentTime = 10;
+    context.currentTime += 10;
     gameAudio.play('champion');
     const suspenseClip = recordings.find(item => item.src.includes('podium-suspense'));
     assert(suspenseClip?.paused, 'champion reveal stops podium suspense music');

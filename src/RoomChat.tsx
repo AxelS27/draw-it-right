@@ -15,7 +15,7 @@ export function RoomChat({ messages, onSend, onClose }: { messages: ChatMessage[
     setDraft('');
   }
   return <section className="waiting-chat-panel" aria-label="Room chat">
-    <div className="waiting-chat-heading"><div><h2><MessageCircle size={18}/>Room chat</h2><p>Local preview. Only you see your messages.</p></div>{onClose && <button className="waiting-icon-button" type="button" aria-label="Close chat" onClick={onClose}><X size={19}/></button>}</div>
+    <div className="waiting-chat-heading"><div><h2><MessageCircle size={18}/>Room chat</h2><p>Local preview. Only you see your messages.</p></div>{onClose && <button className="waiting-icon-button" type="button" data-sound="close" aria-label="Close chat" onClick={onClose}><X size={19}/></button>}</div>
     <div className="waiting-chat-log" ref={log} role="log" aria-label="Preview messages" aria-live="polite" aria-relevant="additions">
       {messages.map(message => <article key={message.id} className={`waiting-message${message.sample ? ' is-sample' : ''}`}><div><strong>{message.author}</strong><span>{message.sample ? 'Sample' : 'Only you'}</span></div><p>{message.text}</p></article>)}
     </div>

@@ -38,7 +38,11 @@ button:disabled { cursor: wait; opacity: .65; transform: none; }
 .login-link { min-height: 44px; }
 .background-art > svg { opacity: .16; }
 .game-world { background: radial-gradient(ellipse at 50% 30%, #729caf48, transparent 65%), linear-gradient(160deg, #4c7895, #355f80 60%, #294b69); }
-.landing-stickers { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: -1; }
+.landing-stickers { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+/* Only the artwork catches hover; the form and navigation stay above it. */
+.game-world:not(.room-world) .join-main { position: relative; z-index: 1; pointer-events: none; }
+.game-world:not(.room-world) .join-content { pointer-events: auto; }
+.game-world > footer { position: relative; z-index: 1; }
 .doodle-card { position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid #ffffff70; box-shadow: 5px 9px 0 #19364d40, 0 16px 30px #19364d20; border-radius: 5px; }
 .doodle-card > span:last-child { font-family: 'Fredoka', sans-serif; font-size: 14px; font-weight: 500; }
 .rocket-card { width: 174px; height: 192px; left: max(4%, calc(50% - 560px)); top: 37%; background: #f5e6c8; color: #45657b; transform: rotate(-12deg); }
@@ -51,6 +55,78 @@ button:disabled { cursor: wait; opacity: .65; transform: none; }
 .little-spark { position: absolute; font-size: 47px; }
 .spark-pink { left: 25%; bottom: 21%; color: #e6b7b3; transform: rotate(15deg); }
 .spark-gold { right: 9%; top: 56%; color: #f0cf89; font-size: 34px; }
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .game-world:not(.room-world) .landing-stickers > :is(.doodle-card, .orbit-doodle) {
+    pointer-events: auto;
+    cursor: default;
+    transition: scale .4s ease, transform .4s ease, box-shadow .4s ease, opacity .4s ease;
+  }
+  .game-world:not(.room-world) .landing-stickers > :is(.doodle-card, .orbit-doodle):hover {
+    animation-play-state: paused;
+    scale: 1.045;
+  }
+  .rocket-card:hover { transform: translateY(-5px) rotate(-8deg); }
+  .brush-card:hover { transform: translateY(-5px) rotate(7deg); }
+  .doodle-card:hover { box-shadow: 7px 13px 0 #19364d40, 0 20px 35px #19364d30; }
+  .orbit-doodle:hover { transform: rotate(20deg); opacity: .85; }
+  .game-world:has(.code-field:focus-within, dialog[open]) .landing-stickers > :is(.doodle-card, .orbit-doodle) {
+    pointer-events: none;
+  }
+}
+/* Individual transforms preserve the stickers' responsive, hand-placed tilt.
+   Negative delays keep the scene out of sync from the very first frame. */
+@media (prefers-reduced-motion: no-preference) {
+  .game-world:not(.room-world) .rocket-card {
+    animation: landing-float 6s ease-in-out -2s infinite;
+  }
+  .game-world:not(.room-world) .brush-card {
+    animation: landing-float 7.5s ease-in-out -4s infinite reverse;
+  }
+  .game-world:not(.room-world) .orbit-doodle {
+    animation: landing-orbit 9s ease-in-out -4s infinite;
+  }
+  .game-world:not(.room-world) .little-spark {
+    animation: landing-twinkle 5s ease-in-out -3s infinite;
+  }
+  .game-world:not(.room-world) .spark-gold {
+    animation-duration: 6.5s;
+    animation-delay: -7s;
+  }
+  .game-world .background-star {
+    animation: landing-distant-twinkle 10s ease-in-out -5s infinite;
+  }
+  .game-world .star-two {
+    animation-duration: 13s;
+    animation-delay: -9s;
+  }
+  .game-world .background-art > svg {
+    animation: landing-line-drift 12s ease-in-out -5s infinite;
+  }
+  /* Let the foreground take over while entering a code or using a dialog. */
+  .game-world:has(.code-field:focus-within, dialog[open]) :is(.landing-stickers, .background-art) > * {
+    animation-play-state: paused;
+  }
+}
+@keyframes landing-float {
+  0%, 100% { translate: -3px 4px; rotate: -3deg; }
+  50% { translate: 5px -18px; rotate: 3deg; }
+}
+@keyframes landing-orbit {
+  0%, 100% { translate: 3px 4px; rotate: -7deg; }
+  50% { translate: -7px -12px; rotate: 7deg; }
+}
+@keyframes landing-twinkle {
+  0%, 100% { opacity: .65; scale: .9; rotate: -12deg; }
+  50% { opacity: 1; scale: 1.12; rotate: 12deg; }
+}
+@keyframes landing-distant-twinkle {
+  0%, 100% { opacity: .35; scale: .95; }
+  50% { opacity: .6; scale: 1.05; }
+}
+@keyframes landing-line-drift {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 10px -12px; }
+}
 .login-dialog { position: fixed; inset: 0; margin: auto; max-height: calc(100svh - 32px); overflow-y: auto; }
 .auth-dialog { max-width: 420px; padding: 40px 32px 28px; text-align: center; border: 1px solid #ffffff; border-radius: 24px; box-shadow: 0 24px 90px #0c243d55; }
 .auth-dialog .dialog-close { width: 40px; height: 40px; top: 12px; right: 12px; }
@@ -61,14 +137,6 @@ button:disabled { cursor: wait; opacity: .65; transform: none; }
 .auth-dialog .google-button > svg:last-child { display: none; }
 .auth-dialog .auth-notice { margin-top: 18px; font-size: 11px; line-height: 1.6; }
 @media (max-width: 380px) { .auth-dialog { padding: 36px 22px 24px; } }
-.shop-eyebrow { display: block; color: #587b7d; font-size: 10px; letter-spacing: 1.5px; font-weight: 700; margin-bottom: 8px; }
-.shop-dialog .dialog-icon { background: #f9e7bf; color: #8b6933; }
-.shop-preview { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 24px 0 16px; }
-.shop-preview > div { display: flex; flex-direction: column; align-items: center; gap: 13px; padding: 20px 8px 15px; border-radius: 12px; background: #e3eee7; color: #456e64; font-size: 11px; }
-.shop-preview > div:nth-child(2) { background: #f5e7c9; color: #927137; }
-.shop-preview > div:nth-child(3) { background: #f2dddb; color: #9b6866; }
-.shop-preview svg { width: 30px; height: 30px; }
-.shop-dialog .shop-footnote { font-size: 11px; }
 @media (max-width: 1000px) {
   .rocket-card { left: -35px; width: 145px; height: 165px; top: 48%; }
   .rocket-card svg { width: 120px; height: 110px; }

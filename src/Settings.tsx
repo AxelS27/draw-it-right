@@ -104,7 +104,7 @@ export function Settings({ uid, profile, onSave, onClose, onLogout, loggingOut, 
       <div className="settings-identity"><AvatarPreview avatar={saved.avatar}/><div><strong>{saved.username}</strong><span>Your player profile</span></div></div>
     </aside>
     <form className="settings-main" onSubmit={event => void save(event)}>
-      <header className="settings-header"><div><p>MAKE IT YOURS</p><h3>{sections[section].title}</h3><span>{sections[section].description}</span></div><button className="settings-close" type="button" aria-label="Close settings" disabled={busy} onClick={close}><X size={21}/></button></header>
+      <header className="settings-header"><div><p>MAKE IT YOURS</p><h3>{sections[section].title}</h3><span>{sections[section].description}</span></div><button className="settings-close" type="button" data-sound="close" aria-label="Close settings" disabled={busy} onClick={close}><X size={21}/></button></header>
       <div className="settings-body">
         {section === 'account' ? <>
           <div className="settings-profile-banner"><div className="settings-profile-avatar"><AvatarPreview avatar={avatar}/></div><div><strong>{username.trim() || 'Your name'}</strong><span>This is how friends see you in the game.</span><button type="button" onClick={() => setSection('avatar')}>Customize avatar <Palette size={14}/></button></div></div>

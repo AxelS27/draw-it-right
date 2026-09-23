@@ -110,7 +110,7 @@ export function ProfileSetup({ uid, onProfile, onLogout, loggingOut }: Props) {
     <div className="setup-footer">
       {isFormOpen && <button className="setup-primary" form="profile-setup-form" disabled={!validUsername(username.trim()) || saving} type="submit">{saving ? 'Saving…' : step === 1 ? 'Next' : 'Save'}</button>}
       <div className="setup-footer-links">
-        <button className="setup-back" type="button" style={{ visibility: isFormOpen && step === 2 ? 'visible' : 'hidden' }} disabled={saving || step !== 2} onClick={() => setStep(1)}>Back</button>
+        <button className="setup-back" data-sound="close" type="button" style={{ visibility: isFormOpen && step === 2 ? 'visible' : 'hidden' }} disabled={saving || step !== 2} onClick={() => setStep(1)}>Back</button>
         <button className="setup-back" disabled={saving || loggingOut} onClick={() => void onLogout()}>{loggingOut ? 'Logging out…' : 'Log out'}</button>
       </div>
     </div>

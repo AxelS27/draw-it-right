@@ -1,5 +1,6 @@
 export type AudioScene = 'landing' | 'waiting' | 'drawing' | 'judging' | 'showcase' | 'leaderboard' | 'podium';
-export type SoundEffect = 'press' | 'tick' | 'submit' | 'podium' | 'reveal' | 'drumroll' | 'champion' | 'cheers';
+export type InterfaceSound = 'press' | 'close' | 'open' | 'switch-on' | 'switch-off' | 'select' | 'increment' | 'decrement';
+export type SoundEffect = InterfaceSound | 'tick' | 'submit' | 'podium' | 'reveal' | 'drumroll' | 'champion' | 'cheers';
 export type MusicTheme = 'ragtime' | 'holiday';
 export type SoundPreferences = { music: number; effects: number; muted: boolean; theme: MusicTheme };
 const storageKey = 'draw-it-right:sound';
@@ -233,13 +234,21 @@ class GameAudio {
       return;
     }
 
-    const notes: Record<Extract<SoundEffect, 'press' | 'tick' | 'submit' | 'reveal'>, number[]> = {
-      press: [76, 84],
-      tick: [79],
-      submit: [72, 76, 79],
-      reveal: [60, 67, 72],
+    const sounds: Record<InterfaceSound | 'tick' | 'submit' | 'reveal', { notes: number[]; duration: number; gap: number; level: number }> = {
+      press: { notes: [76, 84], duration: 0.12, gap: 0.04, level: 0.065 },
+      close: { notes: [72, 64], duration: 0.14, gap: 0.05, level: 0.06 },
+      open: { notes: [67, 74], duration: 0.16, gap: 0.05, level: 0.06 },
+      'switch-on': { notes: [79, 86], duration: 0.07, gap: 0.035, level: 0.055 },
+      'switch-off': { notes: [74, 67], duration: 0.07, gap: 0.035, level: 0.055 },
+      select: { notes: [81], duration: 0.08, gap: 0, level: 0.05 },
+      increment: { notes: [84], duration: 0.09, gap: 0, level: 0.055 },
+      decrement: { notes: [72], duration: 0.09, gap: 0, level: 0.055 },
+      tick: { notes: [79], duration: 0.2, gap: 0.065, level: 0.085 },
+      submit: { notes: [72, 76, 79], duration: 0.2, gap: 0.065, level: 0.085 },
+      reveal: { notes: [60, 67, 72], duration: 0.2, gap: 0.065, level: 0.085 },
     };
-    notes[effect].forEach((pitch, index) => this.tone(pitch, now + index * 0.065, 0.2, 0.085));
+    const sound = sounds[effect];
+    sound.notes.forEach((pitch, index) => this.tone(pitch, now + index * sound.gap, sound.duration, sound.level));
   }
 
   visibility = () => {

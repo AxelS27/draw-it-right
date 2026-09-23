@@ -1,0 +1,56 @@
+/* Catalog height changes must not resize or recrop the background artwork. */
+.game-world:has(.shop-page) > .background-art { position: fixed; }
+html:has(.shop-page) { scrollbar-gutter: stable; }
+.shop-page { width: min(1180px, 100%); margin: 0 auto; padding: 14px 28px 32px; flex: 1; }
+.shop-topline, .shop-heading, .shop-heading > div, .shop-catalog-heading, .shop-item-bottom { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.shop-back { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; background: transparent; color: #e0ebeb; font-size: 13px; }
+.shop-preview-label { border: 1px solid #ffffff36; border-radius: 20px; padding: 8px 12px; color: #ffdf98; font-size: 9px; font-weight: 700; letter-spacing: 1px; }
+.shop-heading { margin: 16px 0 24px; }
+.shop-heading > div { justify-content: flex-start; gap: 16px; }
+.shop-title-icon { display: grid; place-items: center; width: 56px; height: 56px; color: #70532e; background: #ffd479; border-radius: 17px; transform: rotate(-7deg); box-shadow: 0 4px 0 #203d5633; }
+.shop-heading h1 { font: 500 clamp(28px, 4vw, 36px)/1.15 'Fredoka', sans-serif; }
+.shop-heading p { color: #d5e2e5; font-size: 13px; margin-top: 7px; }
+.shop-cosmetic-note { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: #f2dbab; }
+.shop-layout { display: grid; grid-template-columns: minmax(0, 1fr) 310px; gap: 24px; align-items: start; }
+.shop-catalog { min-width: 0; }
+.shop-filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 23px; }
+.shop-filters button { min-height: 44px; padding: 10px 18px; border-radius: 12px; background: #ffffff0d; color: #e2ecee; border: 1px solid #ffffff30; font-size: 13px; font-weight: 600; }
+.shop-filters button[aria-pressed="true"] { background: #ffdc92; border-color: #ffdc92; color: #58422e; box-shadow: 0 3px 0 #203d5630; }
+.shop-filters button:hover:not([aria-pressed="true"]) { background: #ffffff20; }
+.shop-catalog-heading { margin-bottom: 14px; }
+.shop-catalog-heading h2 { font: 500 20px 'Fredoka', sans-serif; }
+.shop-preview-jump { display: none; }
+.shop-catalog-heading > span { font-size: 11px; color: #d5e2e5; }
+.shop-item-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.shop-item { min-width: 0; padding: 7px 7px 12px; border: 2px solid #ffffff; background: #fffcf6; border-radius: 17px; text-align: left; color: #294f61; box-shadow: 0 4px 0 #203d5625; }
+.shop-item.is-selected { border-color: #ffce72; outline: 2px solid #ffce7240; }
+.shop-item-art { display: grid; place-items: center; position: relative; border-radius: 10px; height: 128px; overflow: hidden; }
+.shop-item-art > svg { width: 105px; height: 105px; }
+.shop-worn { position: absolute; top: 7px; right: 7px; display: inline-flex; align-items: center; gap: 3px; padding: 4px 6px; border-radius: 7px; background: #fffcf6e8; color: #446b5a; font-size: 9px; font-weight: 700; }
+.shop-item-name { display: block; font: 500 16px 'Fredoka', sans-serif; margin: 11px 5px 8px; }
+.shop-item-bottom { margin-inline: 5px; font-size: 10px; color: #607b7b; gap: 6px; }
+.shop-item-bottom strong { display: inline-flex; align-items: center; gap: 4px; color: #866525; font-size: 11px; }
+.shop-catalog-note { font-size: 11px; line-height: 1.6; color: #d5e2e5; margin-top: 18px; }
+.shop-fitting-room { position: sticky; top: 20px; border: 1px solid #fff; border-radius: 22px; background: #fffcf6; padding: 22px; color: #294f61; box-shadow: 0 6px 0 #203d5625; }
+.shop-fitting-heading h2 { font: 500 23px 'Fredoka', sans-serif; }
+.shop-fitting-heading > span { display: flex; align-items: center; gap: 7px; font-size: 11px; color: #607b7b; margin-top: 7px; }
+.shop-avatar-stage { position: relative; display: grid; place-items: center; height: 240px; border-radius: 18px; margin: 20px 0; background-image: radial-gradient(circle at 1px 1px, #587b7122 1px, transparent 0); background-size: 18px 18px; }
+.shop-avatar-stage > svg { width: 205px; height: 205px; }
+.shop-stage-label { position: absolute; bottom: 12px; font-size: 8px; letter-spacing: 1.5px; color: #526e66; }
+.shop-stage-spark { position: absolute; color: #9e7c39; font-size: 24px; }
+.shop-stage-spark-one { left: 17px; top: 28px; transform: rotate(-12deg); }
+.shop-stage-spark-two { right: 16px; bottom: 48px; font-size: 16px; }
+.shop-item-details > span { font-size: 10px; color: #607b7b; }
+.shop-item-details h3 { margin: 6px 0 10px; font: 500 24px 'Fredoka', sans-serif; }
+.shop-item-details p { display: flex; align-items: center; gap: 7px; font-size: 12px; color: #866525; }
+.shop-item-details p > span { margin-left: 3px; font-size: 10px; color: #607b7b; }
+.shop-try-button { display: flex; align-items: center; justify-content: center; gap: 9px; min-height: 48px; width: 100%; margin-top: 22px; border: 1px solid #e3b65f; border-bottom: 3px solid #c99645; border-radius: 12px; background: #ffd479; color: #58422e; font-weight: 700; font-size: 13px; }
+.shop-try-button:hover:not(:disabled) { background: #ffdf98; }
+.shop-try-button:disabled { background: #e1ecdf; border-color: #c4d5c0; color: #4f7767; opacity: 1; cursor: default; }
+.shop-reset { display: flex; align-items: center; justify-content: center; gap: 7px; width: 100%; min-height: 44px; margin-top: 5px; font-size: 12px; color: #607b7b; background: transparent; }
+.shop-local-note { padding-top: 12px; border-top: 1px solid #e1e6d9; font-size: 10px; color: #607b7b; line-height: 1.7; text-align: center; }
+.shop-status { font-size: 11px; color: #406e69; line-height: 1.6; }
+.shop-status:not(:empty) { margin-top: 10px; }
+.shop-page button:focus-visible { outline: 3px solid #ffcf79; outline-offset: 3px; }
+@media (max-width: 1000px) { .shop-layout { grid-template-columns: minmax(0, 1fr) 280px; gap: 18px; } .shop-item-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .shop-fitting-room { padding: 18px; } .shop-filters button { padding-inline: 12px; } }
+@media (max-width: 700px) { .shop-preview-jump { display: inline-flex; align-items: center; min-height: 44px; font-size: 12px; color: #ffdf98; text-decoration: underline; } .shop-page { padding: 14px 20px 28px; } .shop-layout { grid-template-columns: minmax(0, 1fr); } .shop-fitting-room { position: static; } .shop-cosmetic-note { display: none; } .shop-item-art { height: 118px; } .shop-item-name { font-size: 15px; } .shop-avatar-stage { height: 230px; } }
