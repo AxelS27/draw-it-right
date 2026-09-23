@@ -1,10 +1,15 @@
-import { useRef, useState, type FormEvent } from 'react';
-import { ArrowRight, Paintbrush, Pencil, ShoppingBag, Sparkles, X } from 'lucide-react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { ArrowRight, ChevronDown, LogOut, Settings, Paintbrush, Pencil, Plus, ShoppingBag, Sparkles, X } from 'lucide-react';
 
 import { useAuth } from './useAuth';
 import { ProfileSetup } from './ProfileSetup';
+import { Settings as AccountSettings } from './Settings';
 import { AvatarPreview } from './AvatarPreview';
 import type { Profile } from './profile';
+import { RoomPages } from './RoomPages';
+import { navigate, usePathname } from './navigation';
+import { useWebsiteAudio } from './useAudio';
+import { SoundControl } from './SoundControl';
 
 const roomIntentKey = 'draw-it-right:room-intent';
 function readRoomIntent(): string {
@@ -25,11 +30,37 @@ function GoogleIcon() {
 }
 
 export default function App() {
+  useWebsiteAudio();
+  const path = usePathname();
+  const isRoomPage = path !== '/';
   const dialog = useRef<HTMLDialogElement>(null);
   const shopDialog = useRef<HTMLDialogElement>(null);
+  const accountMenu = useRef<HTMLDivElement>(null);
+  const accountButton = useRef<HTMLButtonElement>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const outside = (event: PointerEvent) => {
+      if (event.target instanceof Node && !accountMenu.current?.contains(event.target)) setMenuOpen(false);
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setMenuOpen(false);
+        accountButton.current?.focus();
+      }
+    };
+    document.addEventListener('pointerdown', outside);
+    document.addEventListener('keydown', escape);
+    return () => {
+      document.removeEventListener('pointerdown', outside);
+      document.removeEventListener('keydown', escape);
+    };
+  }, [menuOpen]);
   const account = useAuth();
   const [savedProfile, setSavedProfile] = useState<{ uid: string; data: Profile } | null>(null);
-  const profile = savedProfile?.uid === account.user?.uid ? savedProfile?.data : null;
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const profile = savedProfile?.uid === account.user?.uid ? savedProfile?.data ?? null : null;
   const [code, setCode] = useState(readRoomIntent);
   const [error, setError] = useState('');
   const [pendingCode, setPendingCode] = useState<string | null>(() => readRoomIntent() || null);
@@ -41,6 +72,7 @@ export default function App() {
   async function logout() {
     if (await account.logout()) {
       saveRoomIntent(null);
+      setSettingsOpen(false);
       setPendingCode(null);
       setCode('');
     }
@@ -65,18 +97,19 @@ export default function App() {
     if (!account.user) openLogin(code);
   }
 
-  return <div className="game-world">
+  return <div className={`game-world${isRoomPage ? ' room-world' : ''}`}>
     <div className="background-art" aria-hidden="true"><svg viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice"><g fill="none" stroke="currentColor" strokeWidth="2"><path d="m-90 300 280-310 105 95L15 395Z M154 32l105 94M-10 372l69-23-43-42"/><path d="M1090-70q-85 185 108 206t147 208q-50 99 126 106"/><path d="m1000 430 34-96 34 96 97 33-97 34-34 96-34-96-96-34Z"/><path d="m173 519 7-84 78 54q54-15 94 4l74-51-4 94q50 109-106 118-164 6-143-135Z M237 548v13m105-13v13m-71 26 20 14 20-14m-128-10-54-12m55 41-54 9m276-38 53-13m-53 42 52 7"/><circle cx="1363" cy="751" r="170"/><circle cx="1363" cy="751" r="120"/><path d="m536 878 105-182 106 182Z M797 115l13-31 13 31 31 13-31 13-13 31-13-31-31-13Z"/></g></svg><span className="background-star star-one">✦</span><span className="background-star star-two">✦</span></div>
     <div className="landing-stickers" aria-hidden="true">
-      <div className="doodle-card cat-card"><span className="tape"/><svg viewBox="0 0 160 140" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><path d="M34 62 30 24 63 43Q83 36 103 44L132 23 128 66Q144 116 83 119 22 119 34 62Z"/><path d="M59 70v7m43-7v7M72 91l10 8 11-8M34 87 14 82m19 17-21 4m116-16 20-5m-20 17 21 4"/></svg><span>nailed it. probably.</span></div>
+      <div className="doodle-card rocket-card"><span className="tape"/><svg viewBox="0 0 160 140" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><path d="M80 20 C60 45 52 75 55 105 L105 105 C108 75 100 45 80 20 Z" fill="#ffffff50"/><circle cx="80" cy="58" r="11" strokeWidth="3"/><path d="M55 85 C40 92 35 108 38 118 L55 105"/><path d="M105 85 C120 92 125 108 122 118 L105 105"/><path d="M68 105 L62 122 L80 114 L98 122 L92 105"/><path d="M73 124 C73 134 80 138 80 138 C80 138 87 134 87 124" stroke="#e07a5f"/></svg><span>to the moon!</span></div>
       <div className="doodle-card brush-card"><span className="tape"/><Paintbrush/><span>make a little mess.</span></div>
       <svg className="orbit-doodle" viewBox="0 0 180 140" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><ellipse cx="90" cy="70" rx="77" ry="25" transform="rotate(-30 90 70)"/><circle cx="90" cy="70" r="40"/><path d="m150 15 3 10 10 3-10 3-3 10-3-10-10-3 10-3Z"/></svg>
       <span className="little-spark spark-pink">✳</span><span className="little-spark spark-gold">✦</span>
     </div>
-    <header className="header"><a className="brand" href="#" aria-label="Draw It Right! home"><span className="brand-icon"><Pencil size={21}/></span><span>draw it right!</span></a><nav className="header-actions" aria-label="Main navigation"><button className="coin-balance" aria-label="0 coins. View details" onClick={() => shopDialog.current?.showModal()}><span className="gold-coin" aria-hidden="true"><span>★</span></span><span>0</span></button><button className="shop-link" onClick={() => shopDialog.current?.showModal()}><ShoppingBag size={18}/><span>Shop</span></button><span className="nav-divider" aria-hidden="true"/>{account.user ? <>{profile && <span className="account-avatar"><AvatarPreview avatar={profile.avatar}/></span>}<span className="account-name" title={profile?.username ?? 'Player'}>{profile?.username ?? 'Player'}</span><button className="login-link" disabled={account.busy} onClick={() => void logout()}>{account.busy ? 'Please wait…' : 'Log out'}</button></> : <button className="login-link" disabled={!account.ready || account.busy} onClick={() => openLogin(null)}>{account.ready ? 'Log in' : 'Loading…'}<ArrowRight size={15}/></button>}</nav></header>
-    <main className="join-main"><section className="join-content" aria-labelledby="game-title"><div className="game-logo"><span className="logo-pencil" aria-hidden="true"><Pencil/></span><h1 id="game-title">draw it<span>right!</span></h1><Sparkles className="logo-spark" aria-hidden="true"/></div><form className="join-form" onSubmit={joinRoom} noValidate><label className="sr-only" htmlFor="room-code">Room code</label><div className={`code-field${error ? ' has-error' : ''}`}><input id="room-code" name="room-code" placeholder="Enter a room code" inputMode="numeric" autoComplete="off" spellCheck={false} maxLength={6} value={code} aria-invalid={Boolean(error)} aria-describedby={error ? 'code-error' : undefined} onChange={event => { setCode(event.target.value.replace(/\D/g, '').slice(0, 6)); setError(''); }}/><button type="submit" disabled={!account.ready || account.busy}>Join <ArrowRight size={19}/></button></div><p className="code-error" id="code-error" role="alert">{error}</p></form>{account.user && <p className="session-notice" role="status">You’re signed in! {pendingCode ? <>Room {pendingCode} is saved for later. </> : ''}{profile ? 'Your profile is ready. Room joining isn’t available yet.' : 'Let’s finish your profile first.'}</p>}{account.error && <p className="session-notice" role="alert">{account.error}</p>}</section></main>
+    <header className="header"><a className="brand" href="/" onClick={event => { if (!event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) { event.preventDefault(); navigate('/'); } }} aria-label="Draw It Right! home"><span className="brand-icon"><Pencil size={21}/></span><span>draw it right!</span></a><nav className="header-actions" aria-label="Main navigation"><SoundControl/><div className="coin-balance" aria-label="Coin balance: 0"><span className="gold-coin" aria-hidden="true"><span>★</span></span><span>0</span></div><button className="shop-link" onClick={() => shopDialog.current?.showModal()}><ShoppingBag size={18}/><span>Shop</span></button><span className="nav-divider" aria-hidden="true"/>{account.user ? <div className="account-menu" ref={accountMenu} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setMenuOpen(false); }}><button ref={accountButton} className="account-button" aria-expanded={menuOpen} aria-controls="account-dropdown" onClick={() => setMenuOpen(value => !value)}>{profile && <span className="account-avatar"><AvatarPreview avatar={profile.avatar}/></span>}<span className="account-name" title={profile?.username ?? 'Player'}>{profile?.username ?? 'Player'}</span><ChevronDown size={15} aria-hidden="true"/></button>{menuOpen && <div id="account-dropdown" className="account-dropdown"><button disabled={!profile} onClick={() => { setMenuOpen(false); accountButton.current?.focus(); setSettingsOpen(true); }}><Settings size={17} aria-hidden="true"/>Settings</button><button disabled={account.busy} onClick={() => { setMenuOpen(false); void logout(); }}><LogOut size={17} aria-hidden="true"/>{account.busy ? 'Logging out…' : 'Log out'}</button></div>}</div> : <button className="login-link" disabled={!account.ready || account.busy} onClick={() => openLogin(null)}>{account.ready ? 'Log in' : 'Loading…'}<ArrowRight size={15}/></button>}</nav></header>
+    {isRoomPage ? <RoomPages key={`room-${account.user?.uid ?? 'guest'}`} path={path} profile={profile} signedIn={Boolean(account.user)} ready={account.ready} onLogin={() => openLogin(null)}/> : <main className={`join-main${account.user ? ' signed-in-lobby' : ''}`}><section className="join-content" aria-labelledby="game-title"><div className="game-logo"><span className="logo-pencil" aria-hidden="true"><Pencil/></span><h1 id="game-title">draw it<span>right!</span></h1><Sparkles className="logo-spark" aria-hidden="true"/></div>{account.user && <div className="create-room-action"><button className="create-room-button" type="button" disabled={!profile || account.busy} onClick={() => navigate('/room/new')}><Plus size={20} aria-hidden="true"/>Create Room</button><div className="room-action-divider" aria-hidden="true"><span/>or join a room<span/></div></div>}<form className="join-form" onSubmit={joinRoom} noValidate><label className="sr-only" htmlFor="room-code">Room code</label><div className={`code-field${error ? ' has-error' : ''}`}><input id="room-code" name="room-code" placeholder="Enter a room code" inputMode="numeric" autoComplete="off" spellCheck={false} maxLength={6} value={code} aria-invalid={Boolean(error)} aria-describedby={error ? 'code-error' : undefined} onChange={event => { setCode(event.target.value.replace(/\D/g, '').slice(0, 6)); setError(''); }}/><button type="submit" disabled={!account.ready || account.busy}>Join <ArrowRight size={19}/></button></div><p className="code-error" id="code-error" role="alert">{error}</p></form>{account.error && <p className="session-notice" role="alert">{account.error}</p>}</section></main>}
     {account.user && <ProfileSetup key={account.user.uid} uid={account.user.uid} onProfile={data => setSavedProfile({ uid: account.user!.uid, data })} onLogout={logout} loggingOut={account.busy}/>}
-    <footer><span>© {new Date().getFullYear()} Draw It Right!</span><span>Made for your people.</span></footer>
+    {settingsOpen && account.user && profile && <AccountSettings key={`settings-${account.user.uid}`} uid={account.user.uid} profile={profile} onSave={data => setSavedProfile({ uid: account.user!.uid, data })} onClose={() => setSettingsOpen(false)} onLogout={logout} loggingOut={account.busy} logoutError={account.error}/>}
+    <footer><span>© {new Date().getFullYear()} Draw It Right!</span><a href="/audio/credits.html" target="_blank" rel="noopener noreferrer">Music credits</a><span>Made for your people.</span></footer>
     <dialog ref={shopDialog} className="login-dialog shop-dialog" aria-labelledby="shop-title" aria-describedby="shop-description" onClick={event => { if (event.target === event.currentTarget) shopDialog.current?.close(); }}>
       <button className="dialog-close" aria-label="Close shop" onClick={() => shopDialog.current?.close()}><X size={21}/></button>
       <span className="dialog-icon"><ShoppingBag size={27}/></span><span className="shop-eyebrow">A LITTLE EXTRA YOU</span><h2 id="shop-title">The doodle shop</h2><p id="shop-description">A sneak peek at a more colorful you. The shop and coins aren’t available yet.</p>

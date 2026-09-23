@@ -1,13 +1,37 @@
 .header { position: relative; z-index: 1; background: #132e46b3; }
+.sound-toggle { display: inline-grid; place-items: center; flex-shrink: 0; width: 44px; height: 44px; border-radius: 12px; color: #ffe1a0; background: #ffffff0a; border: 1px solid #ffffff25; }
+.sound-toggle:hover { background: #ffffff18; }
+.sound-toggle:focus-visible { outline: 2px solid #ffda84; outline-offset: 3px; }
+.sound-toggle[aria-pressed="true"] { color: #d2e2e8; }
 button:disabled { cursor: wait; opacity: .65; transform: none; }
 .account-name { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
 .session-notice { color: #fff0cd; font-size: 13px; line-height: 1.6; margin-top: 8px; }
+.create-room-action { width: 100%; margin-bottom: 18px; }
+.room-action-divider { display: flex; align-items: center; gap: 14px; margin: 22px 0 0; color: #d5e2e5; font-size: 12px; }
+.room-action-divider > span { flex: 1; height: 1px; background: #ffffff30; }
+.create-room-button { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; min-height: 54px; padding: 14px 20px; border: 1px solid #f3d18b; border-bottom: 4px solid #c99645; border-radius: 14px; background: #ffd479; color: #58422e; font-size: 16px; font-weight: 700; }
+.create-room-button:hover:not(:disabled) { background: #ffdf98; }
+.signed-in-lobby .code-field button { background: #d6eade; color: #294f51; border-color: #7ea99d; }
+.signed-in-lobby .code-field button:hover:not(:disabled) { background: #e5f2e9; }
+.create-room-button:focus-visible { outline: 3px solid #ffe1a0; outline-offset: 4px; }
+.create-room-button:disabled { cursor: not-allowed; }
 .header-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 .shop-link, .coin-balance { display: flex; align-items: center; justify-content: center; gap: 9px; min-height: 44px; border-radius: 12px; padding: 10px 15px; font-size: 13px; font-weight: 700; }
-.shop-link { color: #fff9ef; background: transparent; }
-.shop-link:hover { background: #ffffff14; }
-.coin-balance { color: #ffe1a0; background: #ffda8410; border: 1px solid #ffda8438; }
-.coin-balance:hover { background: #ffda8424; }
+.shop-link { color: #ffe1a0; background: #ffda8410; border: 1px solid #ffda8438; }
+.shop-link:hover { background: #ffda8424; border-color: #ffda8470; }
+.shop-link:focus-visible { outline: 2px solid #ffda84; outline-offset: 3px; }
+.coin-balance { color: #ffe1a0; background: transparent; border: 0; cursor: default; user-select: none; }
+.account-button { display: flex; align-items: center; gap: 9px; min-height: 46px; max-width: 190px; padding: 5px 13px 5px 6px; color: #fff9ef; background: #ffffff12; border: 1px solid #ffffff30; border-radius: 12px; font-weight: 700; }
+.account-button:hover:not(:disabled) { background: #ffffff22; border-color: #ffffff4a; }
+.account-button:focus-visible { outline-color: #ffda84; outline-offset: 3px; }
+.account-menu { position: relative; }
+.account-button > svg { flex-shrink: 0; }
+.account-button[aria-expanded="true"] { background: #ffffff22; }
+.account-dropdown { position: absolute; right: 0; top: calc(100% + 9px); z-index: 2; width: 180px; padding: 6px; border: 1px solid #d3e4df; border-radius: 14px; background: #fffcf6; box-shadow: 0 10px 30px #102b4640; }
+.account-dropdown button { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 10px 12px; border-radius: 8px; background: transparent; color: #365f67; text-align: left; font-size: 13px; font-weight: 600; }
+.account-dropdown button:hover:not(:disabled) { background: #e6f1ed; transform: none; }
+.account-dropdown button:last-child { margin-top: 4px; border-top: 1px solid #d3e4df; border-radius: 0 0 8px 8px; color: #9b5050; }
+.account-dropdown button:focus-visible { outline-offset: -3px; }
 .gold-coin { display: grid; place-items: center; flex-shrink: 0; width: 26px; height: 26px; border: 2px solid #ffe59a; border-radius: 50%; background: linear-gradient(135deg, #ffe58a, #f5b82e 65%, #dc9419); box-shadow: 0 3px 0 #ad6c17, inset 0 0 0 1px #d99420; }
 .gold-coin > span { display: grid; place-items: center; width: 18px; height: 18px; border: 1px solid #c88a20; border-radius: 50%; color: #a76913; font-size: 13px; line-height: 1; text-shadow: 0 1px 0 #ffe6a0; }
 .nav-divider { height: 24px; width: 1px; background: #ffffff24; margin: 0 3px; }
@@ -17,8 +41,8 @@ button:disabled { cursor: wait; opacity: .65; transform: none; }
 .landing-stickers { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: -1; }
 .doodle-card { position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid #ffffff70; box-shadow: 5px 9px 0 #19364d40, 0 16px 30px #19364d20; border-radius: 5px; }
 .doodle-card > span:last-child { font-family: 'Fredoka', sans-serif; font-size: 14px; font-weight: 500; }
-.cat-card { width: 174px; height: 192px; left: max(4%, calc(50% - 560px)); top: 37%; background: #f5e6c8; color: #45657b; transform: rotate(-12deg); }
-.cat-card svg { width: 145px; height: 132px; }
+.rocket-card { width: 174px; height: 192px; left: max(4%, calc(50% - 560px)); top: 37%; background: #f5e6c8; color: #45657b; transform: rotate(-12deg); }
+.rocket-card svg { width: 145px; height: 132px; }
 .tape { position: absolute; top: -12px; left: calc(50% - 30px); width: 60px; height: 25px; background: #c4dad6b3; transform: rotate(6deg); border-left: 2px dashed #ffffff60; border-right: 2px dashed #ffffff60; }
 .brush-card { width: 155px; height: 166px; right: max(5%, calc(50% - 540px)); top: 26%; background: #e6c1bd; color: #79585d; transform: rotate(11deg); gap: 19px; }
 .brush-card > svg { width: 65px; height: 65px; stroke-width: 1.6; transform: rotate(-18deg); }
@@ -46,8 +70,8 @@ button:disabled { cursor: wait; opacity: .65; transform: none; }
 .shop-preview svg { width: 30px; height: 30px; }
 .shop-dialog .shop-footnote { font-size: 11px; }
 @media (max-width: 1000px) {
-  .cat-card { left: -35px; width: 145px; height: 165px; top: 48%; }
-  .cat-card svg { width: 120px; height: 110px; }
+  .rocket-card { left: -35px; width: 145px; height: 165px; top: 48%; }
+  .rocket-card svg { width: 120px; height: 110px; }
   .brush-card { right: -27px; width: 130px; height: 145px; top: 32%; }
   .doodle-card > span:last-child { font-size: 12px; }
   .orbit-doodle { right: 12%; bottom: 12%; width: 135px; }
@@ -56,9 +80,11 @@ button:disabled { cursor: wait; opacity: .65; transform: none; }
   .header { height: auto; min-height: 70px; padding: 14px 20px; flex-wrap: wrap; gap: 12px; }
   .header-actions { gap: 6px; }
   .shop-link, .coin-balance { padding: 9px 10px; font-size: 12px; gap: 6px; }
+  .account-button { max-width: 150px; padding-right: 9px; gap: 6px; }
+  .account-name { max-width: 85px; font-size: 12px; }
   .nav-divider { display: none; }
-  .cat-card { top: auto; bottom: 105px; left: -23px; width: 111px; height: 124px; transform: rotate(-15deg); }
-  .cat-card svg { width: 92px; height: 85px; }
+  .rocket-card { top: auto; bottom: 105px; left: -23px; width: 111px; height: 124px; transform: rotate(-15deg); }
+  .rocket-card svg { width: 92px; height: 85px; }
   .doodle-card > span:last-child { font-size: 9px; }
   .brush-card { top: auto; bottom: 125px; right: -22px; width: 100px; height: 112px; gap: 10px; }
   .brush-card > svg { width: 42px; height: 42px; }

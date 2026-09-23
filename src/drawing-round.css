@@ -1,0 +1,73 @@
+.game-world:has(.drawing-page) { height: 100dvh; min-height: 0; }
+.game-world:has(.drawing-page) > footer { display: none; }
+.drawing-page { display: flex; flex: 1; flex-direction: column; min-height: 0; width: min(1560px, 100%); margin: 0 auto; padding: 14px 28px 20px; gap: 10px; }
+.drawing-heading { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
+.drawing-prompt { flex: 1; }
+.drawing-prompt > span { display: flex; align-items: center; gap: 9px; color: #d2e2e8; font-size: 10px; letter-spacing: 1px; }
+.drawing-prompt b { padding: 3px 5px; border-radius: 4px; background: #ffdc8730; color: #ffe2a5; font-size: 8px; }
+.drawing-prompt h1 { font-family: 'Fredoka', sans-serif; font-size: 29px; font-weight: 400; }
+.drawing-prompt h1 strong { color: #ffe2a5; font-weight: 500; }
+.drawing-clock { display: flex; align-items: center; justify-content: center; gap: 10px; min-width: 108px; padding: 12px 18px; border: 1px solid #e8d398; border-radius: 16px; background: #fff1cf; color: #705329; }
+.drawing-clock strong { font-family: 'Fredoka', sans-serif; font-size: 26px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.drawing-clock.is-urgent { background: #ffe0d9; color: #9e332d; border-color: #f79b8b; }
+.drawing-preview-note { font-size: 10px; color: #c6dadd; line-height: 1.5; }
+.drawing-layout { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 290px; gap: 18px; }
+.drawing-workspace { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 12px; }
+.drawing-editor { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; padding: 14px; gap: 12px; background: #183d5359; border: 1px solid #ffffff28; border-radius: 22px; }
+.drawing-paper { flex: 1; min-height: 0; width: 100%; display: flex; justify-content: center; align-items: center; overflow: hidden; }
+.drawing-paper canvas { display: block; width: auto; height: auto; max-width: 100%; max-height: 100%; aspect-ratio: 8 / 5; background: #fff; border-radius: 8px; box-shadow: 0 4px 16px #102b4620; touch-action: none; cursor: crosshair; }
+.drawing-tools { display: flex; flex-shrink: 0; align-items: center; justify-content: center; flex-wrap: wrap; gap: 6px 10px; max-width: 100%; border: 0; margin: 0; padding: 6px 8px; border-radius: 16px; background: #fffcf6; color: #294f61; }
+.drawing-tool-group { display: flex; gap: 2px; }
+.drawing-tool-group + .drawing-tool-group { border-left: 1px solid #dce4dc; padding-left: 9px; }
+.drawing-tools button { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 10px; background: transparent; color: inherit; }
+.drawing-tools button:hover:not(:disabled) { background: #fff0c7; }
+.drawing-tools button[aria-pressed='true'] { background: #ffdf91; box-shadow: inset 0 0 0 2px #b88637; }
+.drawing-tools button:disabled { opacity: .4; cursor: not-allowed; }
+.drawing-colors button { width: 32px; }
+.drawing-colors button > span { display: grid; place-items: center; width: 23px; height: 23px; border: 1px solid #294f6130; border-radius: 50%; font-size: 16px; }
+.drawing-size-dot { display: block; border-radius: 50%; background: #294f61; }
+.drawing-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-shrink: 0; }
+.drawing-actions > div { display: flex; align-items: center; gap: 8px; color: #d2e2e8; font-size: 12px; line-height: 1.5; }
+.drawing-actions small { display: block; font-size: 10px; margin-top: 3px; }
+.drawing-actions > button { flex-shrink: 0; min-width: 140px; }
+.drawing-chat { min-width: 0; min-height: 0; }
+.drawing-heading .drawing-chat-toggle { display: none; }
+.drawing-reveal { position: absolute; inset: 0; z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; border-radius: inherit; background: #fff7e8f7; color: #294f61; text-align: center; }
+.drawing-reveal h2 { margin: 0; font-family: 'Fredoka', sans-serif; font-size: clamp(26px, 4vw, 44px); font-weight: 400; }
+.drawing-reveal h2 strong { display: block; margin-top: 8px; font-size: clamp(64px, 8vw, 100px); line-height: 1.1; color: #397c77; font-weight: 500; }
+.drawing-countdown { display: grid; place-items: center; width: 80px; height: 80px; margin: 22px 0 16px; border-radius: 24px; background: #ffdf91; font-family: 'Fredoka', sans-serif; font-size: 48px; font-weight: 500; animation: drawing-count-in .25s ease-out; }
+.drawing-clear > div { display: flex; justify-content: center; gap: 8px; }
+.drawing-clear > div > button { min-width: 0; padding: 10px 14px; }
+@keyframes drawing-count-in { from { transform: scale(.85); opacity: .5; } to { transform: scale(1); opacity: 1; } }
+@media (max-width: 1100px) { .drawing-layout { grid-template-columns: minmax(0, 1fr) 260px; gap: 12px; } }
+@media (max-width: 900px), (max-height: 520px) {
+  .drawing-layout { grid-template-columns: minmax(0, 1fr); }
+  .drawing-chat { display: none; }
+  .drawing-heading .drawing-chat-toggle { display: inline-grid; }
+}
+@media (max-width: 600px) {
+  .drawing-page { padding: 8px 12px 12px; gap: 7px; }
+  .drawing-heading { gap: 8px; }
+  .drawing-prompt h1 { font-size: 23px; }
+  .drawing-prompt > span { font-size: 8px; gap: 5px; }
+  .drawing-clock { min-width: 76px; padding: 8px 10px; gap: 6px; }
+  .drawing-clock strong { font-size: 22px; }
+  .drawing-preview-note { font-size: 9px; }
+  .drawing-editor { padding: 8px; gap: 8px; }
+  .drawing-tools { padding: 4px; gap: 4px; }
+  .drawing-tool-group + .drawing-tool-group { padding-left: 3px; }
+  .drawing-tools button { width: 44px; }
+  .drawing-colors { order: -1; width: 100%; justify-content: center; border: 0 !important; padding: 0 !important; }
+  .drawing-colors button { width: 32px; }
+  .drawing-actions > div { font-size: 10px; }
+  .drawing-actions > button { min-width: 105px; padding: 12px; }
+}
+@media (max-height: 700px) {
+  .game-world:has(.drawing-page) > .header { min-height: 54px; height: 54px; padding-block: 4px; flex-wrap: nowrap; gap: 10px; }
+  .game-world:has(.drawing-page) .brand > span:last-child { display: none; }
+  .game-world:has(.drawing-page) .header-actions { width: auto; flex-wrap: nowrap; }
+  .drawing-page { padding-block: 6px; gap: 5px; }
+  .drawing-reveal h2 { margin-top: 6px; font-size: 25px; }
+  .drawing-countdown { width: 52px; height: 52px; margin: 10px 0; font-size: 34px; border-radius: 16px; }
+}
+@media (prefers-reduced-motion: reduce) { .drawing-countdown { animation: none; } }

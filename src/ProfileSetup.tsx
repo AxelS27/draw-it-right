@@ -65,7 +65,8 @@ export function ProfileSetup({ uid, onProfile, onLogout, loggingOut }: Props) {
     setSaving(true);
     setError('');
     try {
-      await setDoc(profileRef(uid), { username: username.trim(), avatar });
+      const updatedProfile = { username: username.trim(), avatar };
+      await setDoc(profileRef(uid), updatedProfile);
       // The server-confirmed snapshot completes onboarding, not an optimistic write.
     } catch {
       setError('Couldn’t save your profile. Check your connection and try again.');
@@ -80,13 +81,15 @@ export function ProfileSetup({ uid, onProfile, onLogout, loggingOut }: Props) {
     setAvatar({ base: pick(avatarOptions.base), color: pick(avatarOptions.color), face: pick(avatarOptions.face), accessory: pick(avatarOptions.accessory) });
   }
 
+  const isFormOpen = status === 'required';
+
   return <dialog ref={dialog} className="login-dialog setup-dialog" aria-labelledby="setup-title" onCancel={event => event.preventDefault()}>
     <div className="setup-content">
     <div className="setup-decoration" aria-hidden="true"><span>✦</span><span>✳</span><span>✦</span></div>
     <h2 id="setup-title">{status === 'loading' ? 'Loading…' : status === 'error' ? 'Try again' : step === 1 ? 'Your username' : 'Your character'}</h2>
     {status === 'loading' && <p role="status">Checking your account. If this takes a while, check your connection.</p>}
     {status === 'error' && <><p role="alert">{error}</p><button className="google-button" onClick={() => { setError(''); setAttempt(value => value + 1); }}>Retry</button></>}
-    {status === 'required' && <form id="profile-setup-form" onSubmit={event => void submit(event)}>
+    {isFormOpen && <form id="profile-setup-form" onSubmit={event => void submit(event)}>
       <ol className="setup-steps" aria-label="Profile setup">
         <li><button type="button" aria-label="Step 1: Username" aria-current={step === 1 ? 'step' : undefined} disabled={saving} onClick={() => setStep(1)}>1</button></li>
         <li><button type="button" aria-label="Step 2: Character" aria-current={step === 2 ? 'step' : undefined} disabled={saving || !validUsername(username.trim())} onClick={() => setStep(2)}>2</button></li>
@@ -105,9 +108,9 @@ export function ProfileSetup({ uid, onProfile, onLogout, loggingOut }: Props) {
     </form>}
     </div>
     <div className="setup-footer">
-      {status === 'required' && <button className="setup-primary" form="profile-setup-form" disabled={!validUsername(username.trim()) || saving} type="submit">{saving ? 'Saving…' : step === 1 ? 'Next' : 'Save'}</button>}
+      {isFormOpen && <button className="setup-primary" form="profile-setup-form" disabled={!validUsername(username.trim()) || saving} type="submit">{saving ? 'Saving…' : step === 1 ? 'Next' : 'Save'}</button>}
       <div className="setup-footer-links">
-        <button className="setup-back" type="button" style={{ visibility: status === 'required' && step === 2 ? 'visible' : 'hidden' }} disabled={saving || step !== 2} onClick={() => setStep(1)}>Back</button>
+        <button className="setup-back" type="button" style={{ visibility: isFormOpen && step === 2 ? 'visible' : 'hidden' }} disabled={saving || step !== 2} onClick={() => setStep(1)}>Back</button>
         <button className="setup-back" disabled={saving || loggingOut} onClick={() => void onLogout()}>{loggingOut ? 'Logging out…' : 'Log out'}</button>
       </div>
     </div>
