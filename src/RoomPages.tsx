@@ -1,35 +1,23 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
+import { auth } from './firebase';
+import { changeRoom, createRoom, defaultRoomOptions, joinRoom, roomError, watchRoom, type Room } from './rooms';
 import { ArrowLeft, ArrowRight, Clock3, Minus, Plus, Settings2, Sparkles, Trophy, Users } from 'lucide-react';
 import type { Profile } from './profile';
 import { navigate } from './navigation';
 import { WaitingRoom } from './WaitingRoom';
 import './room.css';
 
-export type RoomOptions = { name: string; rounds: number; timer: number; capacity: number; doublePoints: boolean; reactions: boolean; lateJoin: boolean };
-const defaults: RoomOptions = { name: '', rounds: 7, timer: 30, capacity: 20, doublePoints: true, reactions: true, lateJoin: false };
+import type { RoomOptions } from './rooms';
+export type { RoomOptions } from './rooms';
 const roomLimits = {
   rounds: { min: 1, max: 10, step: 1 },
   timer: { min: 10, max: 300, step: 10 },
   capacity: { min: 2, max: 40, step: 1 },
 };
-function validCount(value: unknown, { min, max }: { min: number; max: number }): value is number {
-  return typeof value === 'number' && Number.isInteger(value) && value >= min && value <= max;
-}
 function formatDuration(seconds: number) {
   const minutes = Math.floor(seconds / 60);
   const remainder = seconds % 60;
   return minutes === 0 ? `${seconds} sec` : `${minutes} min${remainder ? ` ${remainder} sec` : ''}`;
-}
-const previewCode = '123456';
-const storageKey = 'draw-it-right:room-preview';
-function readRoom(): RoomOptions | null {
-  try {
-    const data: unknown = JSON.parse(sessionStorage.getItem(storageKey) ?? 'null');
-    if (!data || typeof data !== 'object') return null;
-    const room = data as Record<string, unknown>;
-    if (typeof room.name !== 'string' || room.name.length > 32 || !validCount(room.rounds, roomLimits.rounds) || !validCount(room.timer, roomLimits.timer) || !validCount(room.capacity, roomLimits.capacity) || typeof room.doublePoints !== 'boolean' || typeof room.reactions !== 'boolean' || typeof room.lateJoin !== 'boolean') return null;
-    return { name: room.name, rounds: room.rounds, timer: room.timer, capacity: room.capacity, doublePoints: room.doublePoints, reactions: room.reactions, lateJoin: room.lateJoin };
-  } catch { return null; }
 }
 
 function RoomStepper({ label, value, limits, display = String(value), hint, onChange }: {
@@ -45,7 +33,7 @@ function RoomStepper({ label, value, limits, display = String(value), hint, onCh
   </div>;
 }
 
-function RoomForm({ initial, editing, onSubmit, onCancel }: { initial: RoomOptions; editing: boolean; onSubmit: (room: RoomOptions) => void; onCancel: () => void }) {
+function RoomForm({ initial, editing, busy, onSubmit, onCancel }: { initial: RoomOptions; editing: boolean; busy: boolean; onSubmit: (room: RoomOptions) => void; onCancel: () => void }) {
   const [options, setOptions] = useState(initial);
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -62,47 +50,55 @@ function RoomForm({ initial, editing, onSubmit, onCancel }: { initial: RoomOptio
     <div className="room-toggles">{([
       ['doublePoints', 'Double-point finale', 'Make the last round count twice.'],
       ['reactions', 'Emote reactions', 'Allow player reactions.'],
-      ['lateJoin', 'Allow late joining', 'Preview only; not live yet.'],
-    ] as const).map(([key, label, hint]) => <label className="room-toggle" key={key}><span><strong>{label}</strong><small>{hint}</small></span><input type="checkbox" role="switch" checked={options[key]} onChange={event => setOptions({ ...options, [key]: event.target.checked })}/></label>)}</div>
-    <div className="room-form-actions"><button type="button" className="room-secondary" data-sound="close" onClick={onCancel}>Cancel</button><button className="room-primary" type="submit">{editing ? 'Save settings' : 'Create preview room'}<ArrowRight size={18}/></button></div>
+      ['lateJoin', 'Late joining (coming soon)', 'Unavailable until live rounds are implemented.'],
+    ] as const).map(([key, label, hint]) => <label className="room-toggle" key={key}><span><strong>{label}</strong><small>{hint}</small></span><input type="checkbox" role="switch" disabled={key === 'lateJoin'} checked={options[key]} onChange={event => setOptions({ ...options, [key]: event.target.checked })}/></label>)}</div>
+    <div className="room-form-actions"><button type="button" className="room-secondary" data-sound="close" onClick={onCancel}>Cancel</button><button className="room-primary" type="submit" disabled={busy}>{busy ? 'Saving…' : editing ? 'Save settings' : 'Create room'}<ArrowRight size={18}/></button></div>
   </form>;
 }
 
 type Props = { path: string; profile: Profile | null; signedIn: boolean; ready: boolean; onLogin: () => void };
 export function RoomPages({ path, profile, signedIn, ready, onLogin }: Props) {
-  const [room, setRoom] = useState(readRoom);
-  const [editing, setEditing] = useState(false);
-  const [notice, setNotice] = useState('');
+  const code = /^\/room\/(\d{6})$/.exec(path)?.[1];
   const isNew = path === '/room/new';
-  const validPath = isNew || path === `/room/${previewCode}`;
-  const options = room ?? defaults;
+  const uid = auth.currentUser?.uid;
+  const [room, setRoom] = useState<Room | null>(null);
+  const [loading, setLoading] = useState(Boolean(code));
+  const [editing, setEditing] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState('');
+  const [joined, setJoined] = useState(false);
 
-  function saveRoom(next: RoomOptions) {
-    setRoom(next);
-    setNotice('');
-    try { sessionStorage.setItem(storageKey, JSON.stringify(next)); }
-    catch { setNotice('Browser storage is unavailable. This preview will reset when you refresh.'); }
-    setEditing(false);
-    navigate(`/room/${previewCode}`);
+  useEffect(() => {
+    if (!code || !uid || !profile) return;
+    return watchRoom(code, next => { setRoom(next); setLoading(false); }, message => { setNotice(message); setLoading(false); });
+  }, [code, uid, profile]);
+
+  async function perform(action: () => Promise<void>, success?: () => void) {
+    if (busy) return;
+    setBusy(true); setNotice('');
+    try { await action(); success?.(); }
+    catch (error) { setNotice(roomError(error)); }
+    finally { setBusy(false); }
+  }
+
+  function saveRoom(options: RoomOptions) {
+    if (!uid) return;
+    if (isNew) void perform(async () => { const created = await createRoom(uid, options); navigate(`/room/${created}`); });
+    else if (code) void perform(() => changeRoom(code, uid, 'settings', options), () => setEditing(false));
   }
 
   async function copy(value: string, label: string) {
-    try { await navigator.clipboard.writeText(value); setNotice(`${label} copied. This is a local preview, not a live invite.`); }
-    catch { setNotice(`Couldn’t copy. Copy this manually: ${value}`); }
+    try { await navigator.clipboard.writeText(value); setNotice(`${label} copied.`); }
+    catch { setNotice(`Couldn�t copy. Copy this manually: ${value}`); }
   }
 
-  const back = <button className="room-back" data-sound="close" type="button" onClick={() => navigate('/')}><ArrowLeft size={17}/>Back to lobby</button>;
-  if (!ready || !signedIn || !profile) return <main className="room-page">{back}<section className="room-card room-empty"><span className="room-icon"><Users/></span><h1>{!ready ? 'Just a moment…' : !signedIn ? 'Your party starts here' : 'Finish your player profile'}</h1><p>{!ready ? 'Checking your account.' : !signedIn ? 'Log in to set up your room preview.' : 'Choose your name and avatar to continue.'}</p>{ready && !signedIn && <button type="button" className="room-primary" onClick={onLogin}>Log in to continue<ArrowRight size={18}/></button>}</section></main>;
-  if (!validPath || (!isNew && !room)) return <main className="room-page">{back}<section className="room-card room-empty"><h1>No preview room here yet</h1><p>Preview rooms only exist in this browser tab. Create one to explore the waiting room.</p><button type="button" className="room-primary" onClick={() => navigate('/room/new')}>Set up a room<ArrowRight size={18}/></button></section></main>;
-
-  return <>
-    {!isNew && <WaitingRoom profile={profile} options={options} code={previewCode} duration={formatDuration(options.timer)} hidden={editing} onEdit={() => { setEditing(true); setNotice(''); }} notice={notice} onCopy={copy}/>}
-    {(isNew || editing) && <main className="room-page room-creator">
-      <div className="room-topline">{back}<span className="room-preview-badge"><Sparkles size={14}/>FRONTEND PREVIEW</span></div>
-      <div className="room-creator-layout">
-        <RoomForm key={isNew ? 'new' : 'edit'} initial={isNew ? defaults : options} editing={!isNew} onSubmit={saveRoom} onCancel={() => isNew ? navigate('/') : setEditing(false)}/>
-      </div>
-      <p className="room-notice" role="status">{notice}</p>
-    </main>}
-  </>;
+  const activeCode = /already in room (\d{6})/.exec(notice)?.[1];
+  const returnToRoom = activeCode && <button type="button" className="room-secondary" onClick={() => navigate(`/room/${activeCode}`)}>Return to room {activeCode}</button>;
+  const back = <button className="room-back" type="button" onClick={() => navigate('/')}><ArrowLeft size={17}/>Back to lobby</button>;
+  if (!ready || !signedIn || !profile || !uid) return <main className="room-page">{back}<section className="room-card room-empty"><h1>{!ready ? 'Just a moment�' : !signedIn ? 'Your party starts here' : 'Finish your player profile'}</h1><p>{!ready ? 'Checking your account.' : !signedIn ? 'Log in to join or create a room.' : 'Choose your name and avatar to continue.'}</p>{ready && !signedIn && <button type="button" className="room-primary" onClick={onLogin}>Log in to continue<ArrowRight size={18}/></button>}</section></main>;
+  if (isNew || (editing && room && code)) return <main className="room-page room-creator"><div className="room-topline">{back}</div><div className="room-creator-layout"><RoomForm key={isNew ? 'new' : 'edit'} initial={isNew ? defaultRoomOptions : room!.options} editing={!isNew} busy={busy} onSubmit={saveRoom} onCancel={() => isNew ? navigate('/') : setEditing(false)}/></div><p className="room-notice" role="alert">{notice}</p>{returnToRoom}</main>;
+  if (code && loading) return <main className="room-page">{back}<section className="room-card room-empty"><h1>Finding your room�</h1></section></main>;
+  if (!code || !room || room.status === 'closed') return <main className="room-page">{back}<section className="room-card room-empty"><h1>Room not found</h1><p>{notice || 'Double-check your invite code or create a new room.'}</p><button className="room-primary" onClick={() => navigate('/room/new')}>Create a room</button></section></main>;
+  if (!room.players[uid]) return <main className="room-page">{back}<section className="room-card room-empty"><h1>{room.options.name || 'Join this room?'}</h1><p>{Object.keys(room.players).length} / {room.options.capacity} players � {room.options.rounds} rounds � {formatDuration(room.options.timer)}{room.locked ? ' � Locked' : ''}</p>{room.status === 'waiting' && !room.locked && !room.banned.includes(uid) && Object.keys(room.players).length < room.options.capacity && <button className="room-primary" disabled={busy} onClick={() => void perform(() => joinRoom(code, uid), () => setJoined(true))}>{busy ? 'Joining�' : 'Join room'}<ArrowRight size={18}/></button>}<p className="room-notice" role="alert">{notice || (joined ? 'Joining�' : room.banned.includes(uid) ? 'You were removed from this room.' : room.status !== 'waiting' ? 'This match has started.' : room.locked ? 'Ask the host to unlock this room.' : Object.keys(room.players).length >= room.options.capacity ? 'This room is full.' : '')}</p>{returnToRoom}</section></main>;
+  return <WaitingRoom room={room} uid={uid} code={code} duration={formatDuration(room.options.timer)} busy={busy} notice={notice} onEdit={() => setEditing(true)} onCopy={copy} onAction={(action, value) => perform(() => changeRoom(code, uid, action, value), action === 'leave' || action === 'close' ? () => navigate('/') : undefined)}/>;
 }

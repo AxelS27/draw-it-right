@@ -5,11 +5,13 @@
 .waiting-chat-heading h2 { display: flex; align-items: center; gap: 8px; font-family: 'Fredoka', sans-serif; font-size: 20px; font-weight: 500; }
 .waiting-chat-heading p { font-size: 10px; line-height: 1.5; color: #71857e; margin-top: 5px; }
 .waiting-chat-log { overflow-y: auto; overflow-wrap: anywhere; overscroll-behavior: contain; flex: 1; min-height: 0; padding: 16px; }
+.waiting-chat-empty { color: #71857e; font-size: 12px; line-height: 1.6; text-align: center; padding: 20px 4px; }
 .waiting-message { background: #e6efdf; border-radius: 12px 12px 3px 12px; padding: 11px 12px; margin: 0 0 12px 15px; }
 .waiting-message.is-sample { background: #f0eee5; border-radius: 12px 12px 12px 3px; margin-left: 0; margin-right: 15px; }
 .waiting-message > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; font-size: 10px; }
 .waiting-message > div > span { color: #74877c; font-size: 9px; }
 .waiting-message p { margin-top: 6px; font-size: 12px; line-height: 1.6; white-space: pre-wrap; }
+.waiting-chat-error { margin: 6px 12px; color: #9a4239; font-size: 11px; line-height: 1.4; }
 .waiting-chat-form { display: flex; align-items: center; gap: 8px; padding: 0 12px 12px; flex-shrink: 0; }
 .waiting-chat-form input { width: 0; min-width: 0; flex: 1; height: 44px; padding: 10px; border: 1px solid #d5dfd1; background: #fff; border-radius: 10px; font-size: 16px; color: #294f61; }
 .waiting-chat-form button { display: grid; place-items: center; flex-shrink: 0; width: 44px; height: 44px; background: #ffd479; color: #705329; border-radius: 10px; }

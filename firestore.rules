@@ -1,6 +1,173 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function memberProfile(uid) {
+      return get(/databases/$(database)/documents/profiles/$(uid)).data;
+    }
+    function validOptions(o) {
+      return o is map && o.keys().hasAll(['name', 'rounds', 'timer', 'capacity', 'doublePoints', 'reactions', 'lateJoin'])
+        && o.keys().hasOnly(['name', 'rounds', 'timer', 'capacity', 'doublePoints', 'reactions', 'lateJoin'])
+        && o.name is string && o.name.size() <= 32
+        && o.rounds is int && o.rounds >= 1 && o.rounds <= 10
+        && o.timer is int && o.timer >= 10 && o.timer <= 300 && o.timer % 10 == 0
+        && o.capacity is int && o.capacity >= 2 && o.capacity <= 40
+        && o.doublePoints is bool && o.reactions is bool && o.lateJoin is bool;
+    }
+    function roomFields(r) {
+      return r.keys().hasAll(['host', 'status', 'locked', 'options', 'players', 'banned'])
+        && r.keys().hasOnly(['host', 'status', 'locked', 'options', 'players', 'banned', 'joinOrder'])
+        && r.host is string && r.status in ['waiting', 'started', 'closed']
+        && r.locked is bool && validOptions(r.options)
+        && r.players is map && r.players.size() <= r.options.capacity
+        && r.banned is list && r.banned.size() <= 40
+        && (!r.keys().hasAny(['joinOrder']) || (r.joinOrder is list
+          && r.joinOrder.size() == r.players.size()
+          && r.joinOrder.toSet() == r.players.keys().toSet()));
+    }
+    match /roomMemberships/{uid} {
+      function roomPath(code) { return /databases/$(database)/documents/rooms/$(code); }
+      function validNewMembership() {
+        let m = request.resource.data;
+        return m.keys().hasAll(['code']) && m.keys().hasOnly(['code'])
+          && m.code is string && m.code.matches('^[0-9]{6}$')
+          && getAfter(roomPath(m.code)).data.status in ['waiting', 'started']
+          && uid in getAfter(roomPath(m.code)).data.players;
+      }
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow list, delete: if false;
+      allow create: if signedIn() && request.auth.uid == uid && validNewMembership();
+      allow update: if signedIn() && request.auth.uid == uid && validNewMembership()
+        && (!exists(roomPath(resource.data.code))
+          || get(roomPath(resource.data.code)).data.status == 'closed'
+          || !(uid in get(roomPath(resource.data.code)).data.players));
+    }
+    match /rooms/{code} {
+      function sameOrder() {
+        return resource.data.keys().hasAny(['joinOrder'])
+          ? request.resource.data.joinOrder == resource.data.joinOrder
+          : !request.resource.data.keys().hasAny(['joinOrder']);
+      }
+      function orderAfterRemoval(uid) {
+        return !resource.data.keys().hasAny(['joinOrder'])
+          || request.resource.data.joinOrder == resource.data.joinOrder.removeAll([uid]);
+      }
+      function validRemoval(uid) {
+        let delta = request.resource.data.players.diff(resource.data.players);
+        return delta.removedKeys().hasOnly([uid])
+          && delta.removedKeys().size() == 1
+          && delta.affectedKeys() == delta.removedKeys()
+          && request.resource.data.players.size() == resource.data.players.size() - 1
+          && orderAfterRemoval(uid);
+      }
+      allow get: if signedIn() && code.matches('^[0-9]{6}$');
+      allow list, delete: if false;
+      allow create: if signedIn() && code.matches('^[0-9]{6}$')
+        && roomFields(request.resource.data)
+        && request.resource.data.host == request.auth.uid
+        && request.resource.data.status == 'waiting'
+        && request.resource.data.locked == false
+        && request.resource.data.banned == []
+        && request.resource.data.joinOrder == [request.auth.uid]
+        && request.resource.data.players.keys().hasOnly([request.auth.uid])
+        && request.resource.data.players.keys().hasAll([request.auth.uid])
+        && request.resource.data.players[request.auth.uid] == memberProfile(request.auth.uid)
+        && getAfter(/databases/$(database)/documents/roomMemberships/$(request.auth.uid)).data.code == code;
+      allow update: if signedIn() && resource.data.status in ['waiting', 'started']
+        && roomFields(request.resource.data)
+        && (
+          (resource.data.status == 'waiting'
+            && request.resource.data.host == resource.data.host
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['players', 'joinOrder'])
+            && request.resource.data.players.diff(resource.data.players).affectedKeys().hasOnly([request.auth.uid])
+            && request.resource.data.players.diff(resource.data.players).addedKeys().hasAll([request.auth.uid])
+            && !(request.auth.uid in resource.data.players)
+            && !resource.data.locked
+            && !(request.auth.uid in resource.data.banned)
+            && getAfter(/databases/$(database)/documents/roomMemberships/$(request.auth.uid)).data.code == code
+            && request.resource.data.players[request.auth.uid] == memberProfile(request.auth.uid)
+            && request.resource.data.players.size() == resource.data.players.size() + 1
+            && (resource.data.keys().hasAny(['joinOrder'])
+              ? request.resource.data.joinOrder == resource.data.joinOrder.concat([request.auth.uid])
+              : request.resource.data.joinOrder[resource.data.players.size()] == request.auth.uid))
+          || (request.auth.uid != resource.data.host
+            && request.auth.uid in resource.data.players
+            && request.resource.data.host == resource.data.host
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['players', 'joinOrder'])
+            && validRemoval(request.auth.uid))
+          || (request.auth.uid == resource.data.host && (
+            (resource.data.status == 'waiting'
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['options'])
+              && sameOrder())
+            || (resource.data.status == 'waiting'
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['locked'])
+              && sameOrder())
+            || (resource.data.status == 'waiting'
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+              && request.resource.data.status == 'started' && resource.data.players.size() >= 2
+              && sameOrder())
+            || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+              && request.resource.data.status == 'closed' && sameOrder())
+            || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['host'])
+              && request.resource.data.host in resource.data.players
+              && sameOrder())
+            || (resource.data.players.size() >= 2
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['host', 'players', 'joinOrder'])
+              && validRemoval(resource.data.host)
+              && request.resource.data.host in request.resource.data.players
+              && (resource.data.keys().hasAny(['joinOrder'])
+                ? request.resource.data.host == resource.data.joinOrder.removeAll([resource.data.host])[0]
+                : request.resource.data.host == request.resource.data.joinOrder[0]))
+            || (resource.data.status == 'waiting'
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['players', 'joinOrder', 'banned'])
+              && request.resource.data.banned.size() == resource.data.banned.size() + 1
+              && request.resource.data.banned == resource.data.banned.concat([request.resource.data.banned[resource.data.banned.size()]])
+              && !(request.resource.data.banned[resource.data.banned.size()] in resource.data.banned)
+              && request.resource.data.banned[resource.data.banned.size()] != resource.data.host
+              && validRemoval(request.resource.data.banned[resource.data.banned.size()]))
+          ))
+        );
+      match /messages/{messageId} {
+        function member() {
+          return request.auth != null
+            && request.auth.uid in get(/databases/$(database)/documents/rooms/$(code)).data.players;
+        }
+        allow get: if member();
+        allow list: if member() && request.query.limit <= 100;
+        allow create: if member()
+          && get(/databases/$(database)/documents/rooms/$(code)).data.status in ['waiting', 'started']
+          && request.resource.data.keys().hasAll(['sender', 'text', 'createdAt'])
+          && request.resource.data.keys().hasOnly(['sender', 'text', 'createdAt'])
+          && request.resource.data.sender == request.auth.uid
+          && request.resource.data.text is string
+          && request.resource.data.text.size() >= 1
+          && request.resource.data.text.size() <= 160
+          && request.resource.data.createdAt == request.time;
+        allow update, delete: if false;
+      }
+      match /reactions/{uid} {
+        function activeMember() {
+          let room = get(/databases/$(database)/documents/rooms/$(code)).data;
+          return request.auth != null && request.auth.uid == uid
+            && uid in room.players && room.status == 'waiting' && room.options.reactions;
+        }
+        function member() {
+          return request.auth != null
+            && request.auth.uid in get(/databases/$(database)/documents/rooms/$(code)).data.players;
+        }
+        function validReaction() {
+          return request.resource.data.keys().hasAll(['symbol', 'sentAt'])
+            && request.resource.data.keys().hasOnly(['symbol', 'sentAt'])
+            && request.resource.data.symbol in ['👋', '😂', '🔥', '❤️', '🎉']
+            && request.resource.data.sentAt == request.time;
+        }
+        allow get, list: if member();
+        allow create: if activeMember() && validReaction();
+        allow update: if activeMember() && validReaction()
+          && request.time >= resource.data.sentAt + duration.value(1, 's');
+        allow delete: if false;
+      }
+    }
     match /profiles/{uid} {
       function owner() { return request.auth != null && request.auth.uid == uid; }
       function validProfile() {
