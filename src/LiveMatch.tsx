@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Check, Clock3, LoaderCircle, MessageCircle, RotateCcw, Sparkles, Trophy } from 'lucide-react';
+import { ArrowLeft, Check, Clock3, LoaderCircle, MessageCircle, Sparkles, Trophy } from 'lucide-react';
 import { DrawingRound } from './DrawingRound';
 import { RoomChat, type ChatMessage } from './RoomChat';
 import { FinalPodium, RoundGallery, Standings } from './MatchResults';
@@ -11,16 +11,15 @@ import './match-results.css';
 import './live-match.css';
 
 const loadingImage = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500"><rect width="800" height="500" fill="#fff"/><text x="400" y="250" text-anchor="middle" fill="#58777c" font-family="sans-serif" font-size="26">Loading drawing…</text></svg>');
-type Props = { code: string; uid: string; isHost: boolean; options: RoomOptions; onLeave: () => void };
+type Props = { code: string; uid: string; roomClosed: boolean; options: RoomOptions; onLeave: () => void; onFinish: () => void };
 
-export function LiveMatch({ code, uid, isHost, options, onLeave }: Props) {
+export function LiveMatch({ code, uid, roomClosed, options, onLeave, onFinish }: Props) {
   const [state, setState] = useState<MatchState | null>(null);
   const [now, setNow] = useState(Date.now());
   const [offset, setOffset] = useState(0);
   const [error, setError] = useState('');
   const [images, setImages] = useState<Record<string, string>>({});
   const [ownImages, setOwnImages] = useState<Record<string, string>>({});
-  const [rematchBusy, setRematchBusy] = useState(false);
   const [messages, setMessages] = useState<LiveMessage[]>([]);
   const [chatError, setChatError] = useState('');
   const chatDialog = useRef<HTMLDialogElement>(null);
@@ -88,6 +87,7 @@ export function LiveMatch({ code, uid, isHost, options, onLeave }: Props) {
   const chatMessages: ChatMessage[] = useMemo(() => messages.map(message => ({ id: message.id, text: message.text, author: state?.players[message.sender]?.username ?? 'Former player', isYou: message.sender === uid })), [messages, state?.players, uid]);
   const sendChat = async (text: string) => { try { await sendMessage(code, uid, text); } catch (failure) { throw new Error(roomError(failure)); } };
 
+  if (roomClosed && state?.phase !== 'final') return <main className="room-page"><section className="room-card room-empty"><h1>Room closed</h1><p>This match has ended.</p><button className="room-primary" onClick={onFinish}>Back to lobby</button></section></main>;
   if (!state) return <main className="room-page"><section className="room-card room-empty"><h1>Connecting to the match…</h1><p role="alert">{error || 'Waiting for the match server.'}</p><button className="room-secondary" onClick={onLeave}>Leave room</button></section></main>;
 
   const seconds = Math.max(0, Math.ceil((state.deadline - (now - offset)) / 1000));
@@ -126,7 +126,7 @@ export function LiveMatch({ code, uid, isHost, options, onLeave }: Props) {
           : state.phase === 'final' ? <FinalPodium key={state.session} standings={standings}/> : null}
       </div>
       {(state.phase === 'leaderboard' || state.phase === 'results') && <div className="match-stage-countdown"><div><span>Up next: <strong>{state.phase === 'results' ? 'Leaderboard' : state.round === state.rounds ? 'Final podium' : 'Next round'}</strong></span><span className="match-stage-time" role="timer"><Clock3 size={18}/>{seconds}s</span></div><progress max={state.phase === 'results' ? 15 : 10} value={seconds} aria-label="Time remaining before the next section"/></div>}
-      {state.phase === 'final' && <div className="match-actions"><button className="room-secondary" data-sound="close" onClick={onLeave}>Leave room</button>{isHost ? <button className="room-primary" disabled={rematchBusy || !state.rewardsComplete} onClick={() => { setRematchBusy(true); void matchRequest(`/rooms/${code}/rematch`, {}).then(() => { setImages({}); setOwnImages({}); }).catch(failure => setError(failure instanceof Error ? failure.message : 'Couldn’t start rematch.')).finally(() => setRematchBusy(false)); }}>{rematchBusy ? 'Starting…' : 'Play again'}<RotateCcw size={17}/></button> : <span>Waiting for the host to play again</span>}{!state.rewardsComplete && <span>Saving demo coins…</span>}</div>}
+      {state.phase === 'final' && <div className="match-actions"><button className="room-primary" data-sound="close" onClick={onFinish}>Back to lobby</button><span>{roomClosed ? 'Match complete · room closed' : state.rewardsComplete ? 'Closing the room…' : 'Saving demo coins…'}</span></div>}
     </section><aside className="drawing-chat"><RoomChat live messages={chatMessages} onSend={sendChat}/>{chatError && <p className="waiting-chat-error" role="alert">{chatError}</p>}</aside></div>
     <dialog ref={chatDialog} className="waiting-chat-dialog" aria-label="Room chat"><RoomChat live messages={chatMessages} onSend={sendChat} onClose={() => chatDialog.current?.close()}/>{chatError && <p className="waiting-chat-error" role="alert">{chatError}</p>}</dialog>
     <dialog ref={leaveDialog} className="waiting-player-dialog drawing-clear" aria-labelledby="leave-live-title"><h2 id="leave-live-title">Leave this match?</h2><p>You will leave the room, but the match keeps going for the others.</p><div><button className="room-secondary" onClick={() => leaveDialog.current?.close()}>Stay here</button><button className="room-primary" onClick={onLeave}>Leave room</button></div></dialog>

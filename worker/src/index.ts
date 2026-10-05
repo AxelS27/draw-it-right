@@ -1,6 +1,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
-import { advance, createMatch, publicMatch, submit, type Match, type Player } from './engine';
+import { advance, createMatch, publicMatch, submit, type Match } from './engine';
+import { changeFirestoreRoom, firestoreRoom, type RoomInfo } from './firestore-room';
 
 interface Env {
   MATCHES: DurableObjectNamespace<MatchRoom>;
@@ -8,7 +9,6 @@ interface Env {
   FIREBASE_PROJECT_ID: string;
   ALLOWED_ORIGINS: string;
 }
-type RoomInfo = { host: string; status: string; players: Record<string, Player>; joinOrder: string[]; options: { rounds: number; timer: number; doublePoints: boolean } };
 const jwks = createRemoteJWKSet(new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com'));
 const prices: Record<string, number> = { crown: 350, headphones: 250, bow: 150, shades: 200, cat: 400, bunny: 400, robot: 450, bear: 400, rose: 100, lilac: 100, gold: 100 };
 
@@ -16,27 +16,6 @@ async function verify(token: string, projectId: string): Promise<string> {
   const { payload } = await jwtVerify(token, jwks, { issuer: `https://securetoken.google.com/${projectId}`, audience: projectId, algorithms: ['RS256'] });
   if (!payload.sub || typeof payload.auth_time !== 'number' || payload.auth_time > Date.now() / 1000) throw new Error('Invalid token');
   return payload.sub;
-}
-function field(value: unknown): unknown {
-  if (!value || typeof value !== 'object') return undefined;
-  const f = value as Record<string, unknown>;
-  if ('stringValue' in f) return f.stringValue;
-  if ('integerValue' in f) return Number(f.integerValue);
-  if ('booleanValue' in f) return f.booleanValue;
-  if ('arrayValue' in f) return ((f.arrayValue as { values?: unknown[] })?.values ?? []).map(field);
-  if ('mapValue' in f) return Object.fromEntries(Object.entries((f.mapValue as { fields?: Record<string, unknown> })?.fields ?? {}).map(([k, v]) => [k, field(v)]));
-  return undefined;
-}
-async function firestoreRoom(code: string, token: string, projectId: string): Promise<RoomInfo> {
-  const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/rooms/${code}`;
-  const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-  if (!response.ok) throw new Error(`Room read failed (${response.status})`);
-  const raw = await response.json() as { fields?: Record<string, unknown> };
-  const data = Object.fromEntries(Object.entries(raw.fields ?? {}).map(([key, value]) => [key, field(value)])) as Record<string, unknown>;
-  const players = data.players as Record<string, Player>;
-  const options = data.options as RoomInfo['options'];
-  if (!players || !options || !Array.isArray(data.joinOrder)) throw new Error('Create a new room to start a live match.');
-  return { host: String(data.host), status: String(data.status), players, options, joinOrder: data.joinOrder as string[] };
 }
 function error(message: string, status = 400): Response { return Response.json({ error: message }, { status }); }
 
@@ -51,8 +30,8 @@ export default {
     try {
       const url = new URL(request.url);
       if (url.pathname === '/health' && request.method === 'GET') return Response.json({ ok: true }, { headers: cors });
-      const route = /^\/rooms\/(\d{6})\/(socket|submit|draft|rematch|drawing\/\d+\/[A-Za-z0-9_-]+)$/.exec(url.pathname);
-      const socket = route?.[2] === 'socket';
+      const route = /^\/rooms\/(\d{6})\/(presence|socket|submit|draft|drawing\/\d+\/[A-Za-z0-9_-]+)$/.exec(url.pathname);
+      const socket = route?.[2] === 'socket' || route?.[2] === 'presence';
       const protocols = request.headers.get('Sec-WebSocket-Protocol')?.split(',').map(s => s.trim()) ?? [];
       const token = socket && protocols[0] === 'firebase' ? protocols[1] : request.headers.get('Authorization')?.replace(/^Bearer /, '');
       if (!token || token.length > 4096) return fail('Log in first', 401);
@@ -66,11 +45,11 @@ export default {
       if (!route) return fail('Not found', 404);
       const code = route[1]!;
       const room = await firestoreRoom(code, token, env.FIREBASE_PROJECT_ID);
-      if (room.status !== 'started' || !room.players[uid]) return fail('You are not in an active match', 403);
+      if (!room.players[uid] || (route[2] === 'presence' ? !['waiting', 'started'].includes(room.status) : room.status !== 'started')) return fail('You are not in this room', 403);
       const headers = new Headers(request.headers);
       headers.set('X-Verified-Uid', uid);
       headers.set('X-Room-Info', encodeURIComponent(JSON.stringify(room)));
-      if (socket || route[2] === 'rematch') headers.set('X-Room-Token', token);
+      if (socket) headers.set('X-Room-Token', token);
       const stub = env.MATCHES.get(env.MATCHES.idFromName(code));
       const result = await stub.fetch(new Request(request, { headers }));
       if (socket) return result;
@@ -81,13 +60,40 @@ export default {
 
 export class MatchRoom extends DurableObject<Env> {
   private async state(): Promise<Match | undefined> { return this.ctx.storage.get<Match>('state'); }
+  private async schedule(match?: Match) {
+    const grace = await this.ctx.storage.get<Record<string, number>>('disconnects') ?? {};
+    const deadlines = Object.values(grace);
+    if (match?.phase === 'final' && !await this.ctx.storage.get('roomClosed')) deadlines.push(Date.now() + (match.awarded.length === match.order.length ? 10000 : 60000));
+    else if (match && match.phase !== 'final') deadlines.push(match.deadline);
+    if (deadlines.length) await this.ctx.storage.setAlarm(Math.max(Date.now() + 1000, Math.min(...deadlines)));
+    else await this.ctx.storage.deleteAlarm();
+  }
+  private connected(uid: string, closing?: WebSocket): boolean {
+    return this.ctx.getWebSockets().some(socket => {
+      if (socket === closing || socket.readyState !== WebSocket.OPEN) return false;
+      const attachment = socket.deserializeAttachment() as { uid?: string; kind?: string } | null;
+      return attachment?.uid === uid && attachment.kind === 'presence';
+    });
+  }
+  async webSocketError(socket: WebSocket) {
+    try { socket.close(1011, 'Connection error'); } catch { /* Already disconnected. */ }
+  }
+  async webSocketClose(socket: WebSocket, code: number, reason: string) {
+    const attachment = socket.deserializeAttachment() as { uid?: string; kind?: string } | null;
+    try { socket.close(code === 1006 ? 1000 : code, reason); } catch { /* The client already disconnected. */ }
+    if (attachment?.kind !== 'presence' || !attachment.uid || this.connected(attachment.uid, socket)) return;
+    const grace = await this.ctx.storage.get<Record<string, number>>('disconnects') ?? {};
+    grace[attachment.uid] = Date.now() + 60000;
+    await this.ctx.storage.put('disconnects', grace);
+    await this.schedule(await this.state());
+  }
   private broadcast(match: Match) {
     const message = JSON.stringify({ type: 'match', match: publicMatch(match) });
     for (const ws of this.ctx.getWebSockets()) { try { ws.send(message); } catch { ws.close(1011, 'Disconnected'); } }
   }
   private async save(match: Match) {
     await this.ctx.storage.put('state', match);
-    if (match.phase !== 'final') await this.ctx.storage.setAlarm(match.deadline);
+    await this.schedule(match);
     this.broadcast(match);
   }
   async fetch(request: Request): Promise<Response> {
@@ -95,6 +101,18 @@ export class MatchRoom extends DurableObject<Env> {
     const uid = request.headers.get('X-Verified-Uid');
     if (!uid) return error('Unauthorized', 401);
     let match = await this.state();
+    if (url.pathname.endsWith('/presence')) {
+      if (request.headers.get('Upgrade')?.toLowerCase() !== 'websocket') return error('WebSocket required');
+      const token = request.headers.get('X-Room-Token');
+      if (!token) return error('Missing login', 401);
+      await this.ctx.storage.put(`token:${uid}`, token);
+      const grace = await this.ctx.storage.get<Record<string, number>>('disconnects') ?? {};
+      if (uid in grace) { delete grace[uid]; await this.ctx.storage.put('disconnects', grace); }
+      await this.schedule(match);
+      const pair = new WebSocketPair(); const [client, server] = Object.values(pair);
+      this.ctx.acceptWebSocket(server); server.serializeAttachment({ uid, kind: 'presence' });
+      return new Response(null, { status: 101, webSocket: client, headers: { 'Sec-WebSocket-Protocol': 'firebase' } });
+    }
     if (!match && url.pathname.endsWith('/socket')) {
       const room = JSON.parse(decodeURIComponent(request.headers.get('X-Room-Info') ?? '')) as RoomInfo;
       match = await this.ctx.storage.transaction(async storage => {
@@ -108,16 +126,10 @@ export class MatchRoom extends DurableObject<Env> {
       });
     }
     if (!match || !match.players[uid]) return error('Match not found', 404);
-    if (url.pathname.endsWith('/rematch') && request.method === 'POST') {
-      const room = JSON.parse(decodeURIComponent(request.headers.get('X-Room-Info') ?? '')) as RoomInfo;
-      if (room.host !== uid || match.phase !== 'final' || match.awarded.length !== match.order.length) return error('Only the host can start a rematch after rewards finish', 403);
-      const next = createMatch(room.players, room.joinOrder.filter(id => room.players[id]), room.options.rounds, room.options.timer, room.options.doublePoints, Date.now(), match.session + 1);
-      await this.ctx.storage.put('roomToken', request.headers.get('X-Room-Token'));
-      await this.save(next);
-      return Response.json({ started: true });
-    }
     if (url.pathname.endsWith('/socket')) {
       if (request.headers.get('Upgrade')?.toLowerCase() !== 'websocket') return error('WebSocket required');
+      const matchToken = request.headers.get('X-Room-Token');
+      if (matchToken) await this.ctx.storage.put(`token:${uid}`, matchToken);
       const pair = new WebSocketPair(); const [client, server] = Object.values(pair);
       this.ctx.acceptWebSocket(server); server.serializeAttachment({ uid });
       server.send(JSON.stringify({ type: 'match', match: publicMatch(match) }));
@@ -166,9 +178,43 @@ export class MatchRoom extends DurableObject<Env> {
     }
     return error('Not found', 404);
   }
+  private async expireDisconnects() {
+    const code = this.ctx.id.name;
+    if (!code) return;
+    const grace = await this.ctx.storage.get<Record<string, number>>('disconnects') ?? {};
+    for (const [uid] of Object.entries(grace).filter(([, time]) => time <= Date.now()).slice(0, 2)) {
+      if (this.connected(uid)) { delete grace[uid]; continue; }
+      try {
+        const token = await this.ctx.storage.get<string>(`token:${uid}`);
+        if (!token || !await changeFirestoreRoom(code, token, this.env.FIREBASE_PROJECT_ID, uid, false)) throw new Error('Retry disconnect');
+        delete grace[uid];
+        await this.ctx.storage.delete(`token:${uid}`);
+      } catch { grace[uid] = Date.now() + 10000; }
+    }
+    await this.ctx.storage.put('disconnects', grace);
+  }
+  private async finishRoom(match: Match) {
+    const code = this.ctx.id.name;
+    if (!code || match.awarded.length < match.order.length) return;
+    if (await this.ctx.storage.get('roomClosed')) { await this.schedule(match); return; }
+    try {
+      const tokens = [await this.ctx.storage.get<string>('roomToken'), ...await Promise.all(match.order.slice(0, 3).map(uid => this.ctx.storage.get<string>(`token:${uid}`)))];
+      let room: RoomInfo | undefined;
+      for (const token of new Set(tokens.filter((value): value is string => Boolean(value)))) {
+        try { room = await firestoreRoom(code, token, this.env.FIREBASE_PROJECT_ID); break; } catch { /* Use another player's refreshed token. */ }
+      }
+      if (!room) throw new Error('No current room token');
+      if (room.status === 'closed') { await this.ctx.storage.put('roomClosed', true); await this.schedule(match); return; }
+      const hostToken = await this.ctx.storage.get<string>(`token:${room.host}`);
+      if (!hostToken || !await changeFirestoreRoom(code, hostToken, this.env.FIREBASE_PROJECT_ID, room.host, true)) throw new Error('Host is unavailable');
+      await this.ctx.storage.put('roomClosed', true);
+      await this.schedule(match);
+    } catch { await this.ctx.storage.setAlarm(Date.now() + 60000); }
+  }
   async alarm() {
+    await this.expireDisconnects();
     let match = await this.state();
-    if (!match) return;
+    if (!match) { await this.schedule(); return; }
     if (match.phase === 'final') { await this.award(match); return; }
     const token = await this.ctx.storage.get<string>('roomToken');
     if (token) {
@@ -189,7 +235,7 @@ export class MatchRoom extends DurableObject<Env> {
     }
     const next = advance(match, Date.now());
     if (next !== match) await this.save(next);
-    else await this.ctx.storage.setAlarm(match.deadline);
+    else await this.schedule(match);
     if (next.phase === 'final') await this.award(next);
   }
   private async award(match: Match) {
@@ -207,6 +253,7 @@ export class MatchRoom extends DurableObject<Env> {
     }
     if (awarded.size !== match.awarded.length) await this.save({ ...match, awarded: [...awarded] });
     if (awarded.size < match.order.length) await this.ctx.storage.setAlarm(Date.now() + 60000);
+    else await this.finishRoom({ ...match, awarded: [...awarded] });
   }
 }
 

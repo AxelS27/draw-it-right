@@ -24,9 +24,11 @@ export async function matchRequest<T>(path: string, body?: object): Promise<T> {
   if (!response.ok) throw new Error(result && typeof result === 'object' && 'error' in result ? String(result.error) : 'Match server unavailable.');
   return result as T;
 }
-export async function openMatchSocket(code: string): Promise<WebSocket> {
+async function openRoomSocket(code: string, endpoint: 'socket' | 'presence'): Promise<WebSocket> {
   if (!matchApi) throw new Error('Match server is not configured for this site.');
-  const url = new URL(`${matchApi}/rooms/${code}/socket`);
+  const url = new URL(`${matchApi}/rooms/${code}/${endpoint}`);
   url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
   return new WebSocket(url, ['firebase', await token()]);
 }
+export const openMatchSocket = (code: string) => openRoomSocket(code, 'socket');
+export const openPresenceSocket = (code: string) => openRoomSocket(code, 'presence');
