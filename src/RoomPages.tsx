@@ -5,6 +5,8 @@ import { ArrowLeft, ArrowRight, Clock3, Minus, Plus, Settings2, Sparkles, Trophy
 import type { Profile } from './profile';
 import { navigate } from './navigation';
 import { WaitingRoom } from './WaitingRoom';
+import { LiveMatch } from './LiveMatch';
+import { matchRequest } from './match-api';
 import './room.css';
 
 import type { RoomOptions } from './rooms';
@@ -100,5 +102,6 @@ export function RoomPages({ path, profile, signedIn, ready, onLogin }: Props) {
   if (code && loading) return <main className="room-page">{back}<section className="room-card room-empty"><h1>Finding your room�</h1></section></main>;
   if (!code || !room || room.status === 'closed') return <main className="room-page">{back}<section className="room-card room-empty"><h1>Room not found</h1><p>{notice || 'Double-check your invite code or create a new room.'}</p><button className="room-primary" onClick={() => navigate('/room/new')}>Create a room</button></section></main>;
   if (!room.players[uid]) return <main className="room-page">{back}<section className="room-card room-empty"><h1>{room.options.name || 'Join this room?'}</h1><p>{Object.keys(room.players).length} / {room.options.capacity} players � {room.options.rounds} rounds � {formatDuration(room.options.timer)}{room.locked ? ' � Locked' : ''}</p>{room.status === 'waiting' && !room.locked && !room.banned.includes(uid) && Object.keys(room.players).length < room.options.capacity && <button className="room-primary" disabled={busy} onClick={() => void perform(() => joinRoom(code, uid), () => setJoined(true))}>{busy ? 'Joining�' : 'Join room'}<ArrowRight size={18}/></button>}<p className="room-notice" role="alert">{notice || (joined ? 'Joining�' : room.banned.includes(uid) ? 'You were removed from this room.' : room.status !== 'waiting' ? 'This match has started.' : room.locked ? 'Ask the host to unlock this room.' : Object.keys(room.players).length >= room.options.capacity ? 'This room is full.' : '')}</p>{returnToRoom}</section></main>;
-  return <WaitingRoom room={room} uid={uid} code={code} duration={formatDuration(room.options.timer)} busy={busy} notice={notice} onEdit={() => setEditing(true)} onCopy={copy} onAction={(action, value) => perform(() => changeRoom(code, uid, action, value), action === 'leave' || action === 'close' ? () => navigate('/') : undefined)}/>;
+  if (room.status === 'started') return <LiveMatch code={code} uid={uid} isHost={room.host === uid} onLeave={() => void perform(() => changeRoom(code, uid, 'leave'), () => navigate('/'))}/>;
+  return <WaitingRoom room={room} uid={uid} code={code} duration={formatDuration(room.options.timer)} busy={busy} notice={notice} onEdit={() => setEditing(true)} onCopy={copy} onAction={(action, value) => perform(async () => { if (action === 'start') await matchRequest('/health'); await changeRoom(code, uid, action, value); }, action === 'leave' || action === 'close' ? () => navigate('/') : undefined)}/>;
 }

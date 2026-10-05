@@ -5,9 +5,9 @@ type Point = { x: number; y: number };
 type Stroke = { points: Point[]; color: string; size: number };
 const colors = [['Black', '#243746'], ['White', '#ffffff'], ['Red', '#e65050'], ['Orange', '#f39439'], ['Yellow', '#f4cf45'], ['Green', '#4baf73'], ['Blue', '#4386db'], ['Purple', '#9963ce']];
 
-export type DrawingCanvasHandle = { snapshot: () => string };
+export type DrawingCanvasHandle = { snapshot: (format?: 'png' | 'jpeg') => string; hasDrawing: () => boolean };
 
-export function DrawingCanvas({ locked, ref }: { locked: boolean; ref?: Ref<DrawingCanvasHandle> }) {
+export function DrawingCanvas({ locked, ref, onEmpty }: { locked: boolean; ref?: Ref<DrawingCanvasHandle>; onEmpty?: () => void }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const strokes = useRef<Stroke[]>([]);
   const undone = useRef<Stroke[]>([]);
@@ -25,7 +25,7 @@ export function DrawingCanvas({ locked, ref }: { locked: boolean; ref?: Ref<Draw
   const [history, setHistory] = useState({ undo: 0, redo: 0 });
   const clearDialog = useRef<HTMLDialogElement>(null);
 
-  useImperativeHandle(ref, () => ({ snapshot: () => canvas.current?.toDataURL('image/png') ?? '' }));
+  useImperativeHandle(ref, () => ({ snapshot: (format = 'png') => canvas.current?.toDataURL(format === 'jpeg' ? 'image/jpeg' : 'image/png', .72) ?? '', hasDrawing: () => strokes.current.length > 0 || current.current !== null }));
 
   function paint() {
     const context = canvas.current?.getContext('2d');
@@ -95,6 +95,7 @@ export function DrawingCanvas({ locked, ref }: { locked: boolean; ref?: Ref<Draw
     if (stroke) (redo ? strokes : undone).current.push(stroke);
     syncHistory();
     paint();
+    if (!strokes.current.length) onEmpty?.();
   }
 
   return <>
@@ -105,6 +106,6 @@ export function DrawingCanvas({ locked, ref }: { locked: boolean; ref?: Ref<Draw
       <div className="drawing-tool-group" role="group" aria-label="Brush size">{[4, 8, 16].map((value, index) => <button key={value} type="button" aria-label={`${['Small', 'Medium', 'Large'][index]} brush`} aria-pressed={size === value} onClick={() => setSize(value)}><span className="drawing-size-dot" style={{ width: value + 2, height: value + 2 }}/></button>)}</div>
       <div className="drawing-tool-group"><button type="button" aria-label="Undo" title="Undo" disabled={!history.undo} onClick={() => changeHistory(false)}><Undo2 size={19}/></button><button type="button" aria-label="Redo" title="Redo" disabled={!history.redo} onClick={() => changeHistory(true)}><Redo2 size={19}/></button><button type="button" aria-label="Clear canvas" title="Clear canvas" disabled={!history.undo} onClick={() => clearDialog.current?.showModal()}><Trash2 size={19}/></button></div>
     </fieldset>
-    <dialog ref={clearDialog} className="waiting-player-dialog drawing-clear" aria-labelledby="clear-title"><h2 id="clear-title">Start fresh?</h2><p>This clears your whole drawing and undo history.</p><div><button className="room-secondary" onClick={() => clearDialog.current?.close()}>Keep drawing</button><button className="room-primary" onClick={() => { if (!locked) { strokes.current = []; undone.current = []; current.current = null; syncHistory(); paint(); } clearDialog.current?.close(); }}>Clear canvas</button></div></dialog>
+    <dialog ref={clearDialog} className="waiting-player-dialog drawing-clear" aria-labelledby="clear-title"><h2 id="clear-title">Start fresh?</h2><p>This clears your whole drawing and undo history.</p><div><button className="room-secondary" onClick={() => clearDialog.current?.close()}>Keep drawing</button><button className="room-primary" onClick={() => { if (!locked) { strokes.current = []; undone.current = []; current.current = null; syncHistory(); paint(); onEmpty?.(); } clearDialog.current?.close(); }}>Clear canvas</button></div></dialog>
   </>;
 }

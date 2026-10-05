@@ -1,0 +1,17 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "draw-it-right-match",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-08-01",
+  "vars": {
+    "FIREBASE_PROJECT_ID": "draw-it-right",
+    "ALLOWED_ORIGINS": "http://localhost:3000"
+  },
+  "durable_objects": {
+    "bindings": [
+      { "name": "MATCHES", "class_name": "MatchRoom" },
+      { "name": "WALLETS", "class_name": "PlayerWallet" }
+    ]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["MatchRoom", "PlayerWallet"] }]
+}
