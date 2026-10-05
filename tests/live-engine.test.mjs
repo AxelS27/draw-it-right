@@ -21,6 +21,8 @@ test('shared deadlines, duplicate submissions and reward exactly once in final s
   assert.equal(state.results[0].entries.bob.points, 0);
   assert.equal(state.results[0].entries.alice.coins, 20);
   state = advance(state, state.deadline);
+  assert.equal(state.phase, 'leaderboard');
+  state = advance(state, state.deadline);
   assert.equal(state.phase, 'final');
   assert.equal(state.awards.alice, 170);
   assert.equal(state.awards.bob, 0);
@@ -37,6 +39,7 @@ test('forty players complete seven server-timed rounds without exceeding room st
     state = advance(state, state.deadline);
     state = advance(state, state.deadline);
     state = advance(state, state.deadline);
+    state = advance(state, state.deadline);
   }
   assert.equal(state.phase, 'final');
   assert.equal(state.results.length, 7);
@@ -50,6 +53,7 @@ test('rounds advance on the server and final results sum once', () => {
     state = advance(state, state.deadline);
     state = submit(state, 'alice', state.deadline - 1000).match;
     state = submit(state, 'bob', state.deadline - 2000).match;
+    state = advance(state, state.deadline);
     state = advance(state, state.deadline);
     state = advance(state, state.deadline);
     state = advance(state, state.deadline);

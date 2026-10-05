@@ -4,7 +4,7 @@ import type { Profile } from './profile';
 export type MatchEntry = { points: number; submitted: boolean; prediction: string; coins: number };
 export type MatchResult = { round: number; prompt: string; entries: Record<string, MatchEntry> };
 export type MatchState = {
-  session: number; phase: 'reveal' | 'drawing' | 'judging' | 'results' | 'final'; round: number; prompt: string; deadline: number;
+  session: number; phase: 'reveal' | 'drawing' | 'judging' | 'results' | 'leaderboard' | 'final'; round: number; prompt: string; deadline: number;
   serverNow: number; rounds: number; timer: number; doublePoints: boolean; players: Record<string, Profile>;
   order: string[]; scores: Record<string, number>; submissions: string[]; results: MatchResult[];
   awards: Record<string, number>; rewardsComplete: boolean;

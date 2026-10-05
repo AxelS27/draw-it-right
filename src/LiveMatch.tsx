@@ -1,25 +1,34 @@
-import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, Clock3, MessageCircle, Send, Trophy } from 'lucide-react';
-import { DrawingCanvas, type DrawingCanvasHandle } from './DrawingCanvas';
-import { matchRequest, openMatchSocket, type MatchState } from './match-api';
-import { AvatarPreview } from './AvatarPreview';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowLeft, Check, Clock3, LoaderCircle, MessageCircle, RotateCcw, Sparkles, Trophy } from 'lucide-react';
+import { DrawingRound } from './DrawingRound';
 import { RoomChat, type ChatMessage } from './RoomChat';
-import { roomError, sendMessage, watchMessages, type LiveMessage } from './rooms';
-import './drawing-round.css';
+import { FinalPodium, RoundGallery, Standings } from './MatchResults';
+import { roomError, sendMessage, watchMessages, type LiveMessage, type RoomOptions } from './rooms';
+import { matchRequest, openMatchSocket, type MatchState } from './match-api';
+import type { Entrant, RoundResult, Standing } from './preview-match';
+import { useAudioScene } from './useAudio';
+import './match-results.css';
 import './live-match.css';
 
-type Props = { code: string; uid: string; isHost: boolean; onLeave: () => void };
-export function LiveMatch({ code, uid, isHost, onLeave }: Props) {
+const loadingImage = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500"><rect width="800" height="500" fill="#fff"/><text x="400" y="250" text-anchor="middle" fill="#58777c" font-family="sans-serif" font-size="26">Loading drawing…</text></svg>');
+type Props = { code: string; uid: string; isHost: boolean; options: RoomOptions; onLeave: () => void };
+
+export function LiveMatch({ code, uid, isHost, options, onLeave }: Props) {
   const [state, setState] = useState<MatchState | null>(null);
-  const [offset, setOffset] = useState(0);
   const [now, setNow] = useState(Date.now());
+  const [offset, setOffset] = useState(0);
   const [error, setError] = useState('');
   const [images, setImages] = useState<Record<string, string>>({});
-  const [selectedRound, setSelectedRound] = useState<number | null>(null);
+  const [ownImages, setOwnImages] = useState<Record<string, string>>({});
   const [rematchBusy, setRematchBusy] = useState(false);
   const [messages, setMessages] = useState<LiveMessage[]>([]);
   const [chatError, setChatError] = useState('');
   const chatDialog = useRef<HTMLDialogElement>(null);
+  const leaveDialog = useRef<HTMLDialogElement>(null);
+  const content = useRef<HTMLDivElement>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+  useAudioScene(state?.phase === 'results' ? 'showcase' : state?.phase === 'final' ? 'podium' : state?.phase === 'judging' ? 'judging' : state?.phase === 'leaderboard' ? 'leaderboard' : state?.phase === 'drawing' && state.submissions.includes(uid) ? 'judging' : state?.phase === 'drawing' || state?.phase === 'reveal' ? 'drawing' : null, 2);
+
   useEffect(() => watchMessages(code, setMessages, setChatError), [code]);
   useEffect(() => {
     const interval = window.setInterval(() => setNow(Date.now()), 200);
@@ -37,7 +46,11 @@ export function LiveMatch({ code, uid, isHost, onLeave }: Props) {
         socket.onmessage = event => {
           try {
             const message = JSON.parse(event.data as string) as { type: string; match: MatchState };
-            if (message.type === 'match') { setOffset(Date.now() - message.match.serverNow); setState(message.match); setError(''); }
+            if (message.type === 'match') {
+              setOffset(Date.now() - message.match.serverNow);
+              setState(message.match);
+              setError('');
+            }
           } catch { setError('Couldn’t read match state. Reconnecting…'); }
         };
         socket.onclose = () => { if (!disposed) { setError('Connection lost. Reconnecting…'); retry = window.setTimeout(() => void connect(), 2500); } };
@@ -49,73 +62,73 @@ export function LiveMatch({ code, uid, isHost, onLeave }: Props) {
     void connect();
     return () => { disposed = true; if (retry) window.clearTimeout(retry); socket?.close(); };
   }, [code]);
-  useEffect(() => { if (state?.phase === 'final' && state.rewardsComplete) window.dispatchEvent(new Event('wallet-updated')); }, [state?.phase, state?.rewardsComplete]);
-  const round = state?.phase === 'final' && selectedRound ? state.results[selectedRound - 1] : state?.results.at(-1);
+  useEffect(() => { if (state?.phase === 'final' && state.rewardsComplete) window.dispatchEvent(new Event('wallet-updated')); }, [state?.session, state?.phase, state?.rewardsComplete]);
   useEffect(() => {
-    if (!state || !round || !['results', 'final'].includes(state.phase)) return;
+    if (content.current) content.current.scrollTop = 0;
+    if (!chatDialog.current?.open) heading.current?.focus({ preventScroll: true });
+  }, [state?.phase]);
+
+  const lastResult = state?.results.at(-1);
+  useEffect(() => {
+    if (!state || state.phase !== 'results' || !lastResult) return;
     let active = true;
-    const top = Object.keys(round.entries).sort((a, b) => round.entries[b]!.points - round.entries[a]!.points).slice(0, 3);
-    const ids = [...new Set([uid, ...top])];
-    void Promise.all(ids.map(async id => {
+    const session = state.session;
+    void Promise.all(state.order.filter(id => lastResult.entries[id]?.submitted).map(async id => {
       try {
-        const result = await matchRequest<{ image: string }>(`/rooms/${code}/drawing/${round.round}/${id}`);
-        if (active && result.image) setImages(current => ({ ...current, [`${state.session}:${round.round}:${id}`]: result.image }));
-      } catch { /* A missing submission has no image. */ }
-    }));
+        const response = await matchRequest<{ image: string }>(`/rooms/${code}/drawing/${lastResult.round}/${id}`);
+        return [id, response.image] as const;
+      } catch { return [id, ''] as const; }
+    })).then(drawings => {
+      if (!active) return;
+      setImages(current => ({ ...current, ...Object.fromEntries(drawings.filter(([, image]) => image).map(([id, image]) => [`${session}:${lastResult.round}:${id}`, image])) }));
+    });
     return () => { active = false; };
-  }, [code, uid, round, state?.phase, state?.session]);
+  }, [code, state?.session, state?.phase, lastResult]);
+
+  const chatMessages: ChatMessage[] = useMemo(() => messages.map(message => ({ id: message.id, text: message.text, author: state?.players[message.sender]?.username ?? 'Former player', isYou: message.sender === uid })), [messages, state?.players, uid]);
+  const sendChat = async (text: string) => { try { await sendMessage(code, uid, text); } catch (failure) { throw new Error(roomError(failure)); } };
 
   if (!state) return <main className="room-page"><section className="room-card room-empty"><h1>Connecting to the match…</h1><p role="alert">{error || 'Waiting for the match server.'}</p><button className="room-secondary" onClick={onLeave}>Leave room</button></section></main>;
-  const seconds = Math.max(0, Math.ceil((state.deadline - (now - offset)) / 1000));
-  const ranking = [...state.order].sort((a, b) => state.scores[b]! - state.scores[a]! || state.order.indexOf(a) - state.order.indexOf(b));
-  const own = round?.entries[uid];
-  const chatMessages: ChatMessage[] = messages.map(message => ({ id: message.id, text: message.text, author: state.players[message.sender]?.username ?? 'Former player', isYou: message.sender === uid }));
-  const sendChat = async (text: string) => { try { await sendMessage(code, uid, text); } catch (failure) { throw new Error(roomError(failure)); } };
-  return <main className="drawing-page live-match">
-    <header className="drawing-heading"><button className="waiting-icon-button" aria-label="Leave match" onClick={() => { if (window.confirm('Leave this match?')) onLeave(); }}><ArrowLeft size={20}/></button><div className="drawing-prompt"><span>ROUND {state.round} / {state.rounds} <b>LIVE MATCH</b>{state.round === state.rounds && state.doublePoints && <b>2× POINTS</b>}</span><h1>{state.phase === 'final' ? 'Final podium' : state.phase === 'results' ? 'Round results' : state.phase === 'judging' ? 'Judging drawings…' : `Draw a ${state.prompt}`}</h1></div>{state.phase !== 'final' && <div className="drawing-clock" role="timer" aria-label={`${seconds} seconds remaining`}><Clock3 size={21}/><strong>{seconds}s</strong></div>}<button className="drawing-chat-toggle waiting-icon-button" aria-label="Open room chat" onClick={() => chatDialog.current?.showModal()}><MessageCircle size={21}/></button></header>
-    <p className="drawing-preview-note">Mock judging on the server: points and predictions are simulated, not AI recognition. The round timer and results are shared by everyone.</p>
-    {error && <p className="live-match-error" role="alert">{error}</p>}
-    {state.phase === 'final' && isHost && <button className="room-primary live-match-rematch" disabled={rematchBusy || !state.rewardsComplete} onClick={() => { setRematchBusy(true); void matchRequest(`/rooms/${code}/rematch`, {}).then(() => { setSelectedRound(null); setImages({}); }).catch(failure => setError(failure instanceof Error ? failure.message : 'Couldn’t start rematch.')).finally(() => setRematchBusy(false)); }}>{rematchBusy ? 'Starting…' : 'Play again'}</button>}
-    {state.phase === 'final' && !isHost && <p className="drawing-preview-note">Waiting for the host to start another match.</p>}
-    {state.phase === 'reveal' ? <section className="live-match-center"><p>Get ready to draw</p><h2>{state.prompt}</h2><strong>{seconds}</strong></section>
-      : state.phase === 'drawing' ? <LiveDrawing key={`${state.session}:${state.round}`} code={code} submitted={state.submissions.includes(uid)} remaining={seconds} messages={chatMessages} onSend={sendChat}/>
-      : state.phase === 'judging' ? <section className="live-match-center" role="status"><h2>Checking the doodles…</h2><p>Demo judging is running on the match server.</p></section>
-      : <div className="live-match-results"><section className="live-match-result-card"><h2>{state.phase === 'final' ? 'You did it!' : `Round ${round?.round} · ${round?.prompt}`}</h2>{state.phase === 'final' && <div className="live-match-rounds" aria-label="View round drawings">{state.results.map(result => <button key={result.round} aria-pressed={round?.round === result.round} onClick={() => setSelectedRound(result.round)}>Round {result.round}</button>)}</div>}{round && <><p>Round {round.round}: <strong>{own?.submitted ? `${own.points.toLocaleString()} points` : 'No submission'}</strong></p>{images[`${state.session}:${round.round}:${uid}`] && <img src={images[`${state.session}:${round.round}:${uid}`]} alt="Your submitted drawing"/>}<h3>Top drawings</h3><div className="live-match-gallery">{Object.keys(round.entries).filter(id => round.entries[id]!.submitted).sort((a, b) => round.entries[b]!.points - round.entries[a]!.points).slice(0, 3).map((id, index) => <article key={id}><strong>#{index + 1} {state.players[id]?.username}</strong>{images[`${state.session}:${round.round}:${id}`] ? <img src={images[`${state.session}:${round.round}:${id}`]} alt={`${state.players[id]?.username}'s drawing`}/> : <span>Loading drawing…</span>}<small>{round.entries[id]!.points.toLocaleString()} pts</small></article>)}</div></>}{state.phase === 'final' && <p>Coins earned: <strong>{state.awards[uid] ?? 0}</strong>{state.rewardsComplete ? ' · saved to your wallet' : ' · saving…'}</p>}</section><section className="live-match-standings"><h2><Trophy size={21}/> {state.phase === 'final' ? 'Final standings' : 'Leaderboard'}</h2>{ranking.map((id, index) => <div key={id} className="live-match-player"><span>#{index + 1}</span><AvatarPreview avatar={state.players[id]!.avatar}/><strong>{state.players[id]!.username}{id === uid ? ' · you' : ''}</strong><span>{state.scores[id]!.toLocaleString()} pts</span></div>)}</section></div>}
-    <dialog ref={chatDialog} className="waiting-chat-dialog" aria-label="Room chat"><RoomChat live messages={chatMessages} onSend={sendChat} onClose={() => chatDialog.current?.close()}/>{chatError && <p className="waiting-chat-error" role="alert">{chatError}</p>}</dialog>
-  </main>;
-}
 
-function LiveDrawing({ code, submitted, remaining, messages, onSend }: { code: string; submitted: boolean; remaining: number; messages: ChatMessage[]; onSend: (text: string) => Promise<void> }) {
-  const canvas = useRef<DrawingCanvasHandle>(null);
-  const savedDraft = useRef(false);
-  const draftBusy = useRef(false);
-  const finalBusy = useRef(false);
-  const [error, setError] = useState('');
-  const [sending, setSending] = useState(false);
-  async function saveDraft() {
-    if (submitted || remaining <= 0 || draftBusy.current || !canvas.current) return;
-    const image = canvas.current.hasDrawing() ? canvas.current.snapshot('jpeg') : null;
-    if (!image && !savedDraft.current) return;
-    draftBusy.current = true;
-    try { await matchRequest(`/rooms/${code}/draft`, { image }); if (image) savedDraft.current = true; }
-    catch { /* Retry on the next interval. */ }
-    finally { draftBusy.current = false; }
-  }
-  async function submitDrawing() {
-    if (submitted || finalBusy.current || !canvas.current?.hasDrawing() || remaining <= 0) return;
-    finalBusy.current = true;
-    setSending(true);
-    try {
-      await matchRequest(`/rooms/${code}/submit`, { image: canvas.current.snapshot('jpeg') });
-      setError('');
-    } catch (failure) { setError(failure instanceof Error ? failure.message : 'Couldn’t submit. Try again.'); }
-    finally { finalBusy.current = false; setSending(false); }
-  }
-  useEffect(() => {
-    if (submitted) return;
-    const timer = window.setInterval(() => void saveDraft(), 4000);
-    return () => window.clearInterval(timer);
-  }, [submitted, code, remaining <= 0]);
-  useEffect(() => { if (remaining <= 2 && remaining > 0 && !submitted) void submitDrawing(); }, [remaining, submitted]);
-  return <div className="drawing-layout"><section className="drawing-workspace"><div className="drawing-editor"><DrawingCanvas ref={canvas} locked={submitted || sending || remaining <= 0} onEmpty={() => { if (savedDraft.current) void matchRequest(`/rooms/${code}/draft`, { image: null }).catch(() => { /* The interval retries. */ }); }}/></div><div className="drawing-actions"><div role="status">{submitted ? 'Drawing submitted. Waiting for the others.' : error || 'Your drawing stays private until results.'}</div><button className="room-primary" disabled={submitted || sending || remaining <= 0} onClick={() => void submitDrawing()}>{sending ? 'Sending…' : submitted ? 'Submitted' : 'Submit'}<Send size={17}/></button></div></section><aside className="drawing-chat"><RoomChat live messages={messages} onSend={onSend}/></aside></div>;
+  const seconds = Math.max(0, Math.ceil((state.deadline - (now - offset)) / 1000));
+  const entrants: Entrant[] = state.order.map((id, index) => ({ id: index, profile: state.players[id]!, isYou: id === uid }));
+  const standings: Standing[] = entrants.map((entrant, index) => {
+    const playerId = state.order[index]!;
+    return { entrant, total: state.scores[playerId] ?? 0, added: lastResult?.entries[playerId]?.points ?? 0 };
+  }).sort((a, b) => b.total - a.total || a.entrant.id - b.entrant.id);
+  const result: RoundResult | null = lastResult ? {
+    round: lastResult.round,
+    prompt: lastResult.prompt,
+    multiplier: state.doublePoints && lastResult.round === state.rounds ? 2 : 1,
+    drawings: entrants.flatMap((entrant, index) => {
+      const playerId = state.order[index]!;
+      const entry = lastResult.entries[playerId];
+      return entry?.submitted ? [{ entrant, points: entry.points, image: images[`${state.session}:${lastResult.round}:${playerId}`] || (playerId === uid ? ownImages[`${state.session}:${lastResult.round}`] : '') || loadingImage }] : [];
+    }).sort((a, b) => b.points - a.points || a.entrant.id - b.entrant.id),
+  } : null;
+  const ownImage = ownImages[`${state.session}:${state.round}`];
+  const submitted = state.submissions.includes(uid);
+  const waiting = state.phase === 'drawing' && submitted;
+  const busy = waiting || state.phase === 'judging';
+  const title = state.phase === 'final' ? 'The final podium' : state.phase === 'leaderboard' ? 'Leaderboard' : state.phase === 'results' ? 'The results are in!' : waiting ? 'Drawing submitted!' : 'AI is judging…';
+
+  if (state.phase === 'reveal' || (state.phase === 'drawing' && !submitted)) return <DrawingRound key={`${state.session}:${state.round}`} options={options} round={state.round} prompt={state.prompt} messages={chatMessages} onSend={sendChat} onBack={onLeave} onSubmit={() => { /* Live submissions use the server callback. */ }} live={{ revealing: state.phase === 'reveal', remaining: seconds, submitted, onDraft: image => matchRequest(`/rooms/${code}/draft`, { image }).then(() => undefined), onSubmit: async image => { await matchRequest(`/rooms/${code}/submit`, { image }); setOwnImages(current => ({ ...current, [`${state.session}:${state.round}`]: image })); } }}/>;
+
+  return <main className="drawing-page match-page">
+    <header className="drawing-heading"><button className="waiting-icon-button" aria-label="Leave match" onClick={() => leaveDialog.current?.showModal()}><ArrowLeft size={20}/></button><div className="drawing-prompt"><span>{state.phase === 'final' ? 'MATCH COMPLETE' : `ROUND ${state.round} / ${state.rounds}`} <b>LIVE MATCH</b>{state.round === state.rounds && state.doublePoints && state.phase !== 'final' && <b>2× POINTS</b>}</span><h1 ref={heading} tabIndex={-1}>{title}</h1></div><button className="drawing-chat-toggle waiting-icon-button" aria-label="Open room chat" onClick={() => chatDialog.current?.showModal()}><MessageCircle size={21}/></button></header>
+    <p className="drawing-preview-note">Real players and shared rounds. Judging is simulated, not real AI recognition.</p>
+    {error && <p className="live-match-error" role="alert">{error}</p>}
+    <div className="drawing-layout"><section className="match-main" aria-label={title}>
+      <div className={`match-content${busy ? ' is-busy' : ''}`} ref={content}>
+        {busy ? <div className="match-judging" role="status"><div className="match-judging-icon">{waiting ? <Check size={42}/> : <Sparkles size={42}/>}</div><h2>{waiting ? 'You’re all set.' : 'AI is judging…'}</h2><p>{waiting ? 'Waiting for the other artists.' : 'Finding this round’s stars.'}</p><div className="match-progress"><LoaderCircle size={18}/><span>{waiting ? `${state.submissions.length} / ${state.order.length} drawings submitted` : 'Simulated judging on the server'}</span></div>{ownImage && <img className="match-submitted-image" src={ownImage} alt="Your submitted drawing"/>}</div>
+          : state.phase === 'results' && result ? result.drawings.length ? <RoundGallery result={result}/> : <div className="match-judging"><h2>No drawings this round</h2><p>Better luck next round!</p></div>
+          : state.phase === 'leaderboard' ? <><div className="match-section-heading"><div><span>THE BIG PICTURE</span><h2>Who’s leading the pack?</h2><p>Total points after {state.round} {state.round === 1 ? 'round' : 'rounds'}.</p></div><Trophy size={34}/></div><Standings standings={standings}/></>
+          : state.phase === 'final' ? <FinalPodium key={state.session} standings={standings}/> : null}
+      </div>
+      {(state.phase === 'leaderboard' || state.phase === 'results') && <div className="match-stage-countdown"><div><span>Up next: <strong>{state.phase === 'results' ? 'Leaderboard' : state.round === state.rounds ? 'Final podium' : 'Next round'}</strong></span><span className="match-stage-time" role="timer"><Clock3 size={18}/>{seconds}s</span></div><progress max={state.phase === 'results' ? 15 : 10} value={seconds} aria-label="Time remaining before the next section"/></div>}
+      {state.phase === 'final' && <div className="match-actions"><button className="room-secondary" data-sound="close" onClick={onLeave}>Leave room</button>{isHost ? <button className="room-primary" disabled={rematchBusy || !state.rewardsComplete} onClick={() => { setRematchBusy(true); void matchRequest(`/rooms/${code}/rematch`, {}).then(() => { setImages({}); setOwnImages({}); }).catch(failure => setError(failure instanceof Error ? failure.message : 'Couldn’t start rematch.')).finally(() => setRematchBusy(false)); }}>{rematchBusy ? 'Starting…' : 'Play again'}<RotateCcw size={17}/></button> : <span>Waiting for the host to play again</span>}{!state.rewardsComplete && <span>Saving demo coins…</span>}</div>}
+    </section><aside className="drawing-chat"><RoomChat live messages={chatMessages} onSend={sendChat}/>{chatError && <p className="waiting-chat-error" role="alert">{chatError}</p>}</aside></div>
+    <dialog ref={chatDialog} className="waiting-chat-dialog" aria-label="Room chat"><RoomChat live messages={chatMessages} onSend={sendChat} onClose={() => chatDialog.current?.close()}/>{chatError && <p className="waiting-chat-error" role="alert">{chatError}</p>}</dialog>
+    <dialog ref={leaveDialog} className="waiting-player-dialog drawing-clear" aria-labelledby="leave-live-title"><h2 id="leave-live-title">Leave this match?</h2><p>You will leave the room, but the match keeps going for the others.</p><div><button className="room-secondary" onClick={() => leaveDialog.current?.close()}>Stay here</button><button className="room-primary" onClick={onLeave}>Leave room</button></div></dialog>
+  </main>;
 }

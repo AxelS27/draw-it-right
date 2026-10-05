@@ -15,8 +15,8 @@ Cloudflare Free limits are daily and can stop requests if reached; monitor Worke
 
 ## Current match behavior
 
-- A host starts a 2+ player room in Firestore. The first joined player to connect opens the match in the room's Durable Object. All browsers receive the same prompt, phase and deadline over WebSockets.
-- Reveal: 3 seconds; drawing: room timer; mock judging: 2 seconds; results: 10 seconds. Up to the configured number of rounds. Images autosave every 4 seconds while drawn; on deadline, the server submits the latest saved image. A tab that closes before its first autosave may have no submission.
+- A host starts a 2+ player room in Firestore. The first joined player to connect opens the match in the room's Durable Object. All browsers receive the same prompt, phase and deadline over WebSockets. The live UI reuses the existing preview drawing, gallery, leaderboard and podium components rather than replacing their design.
+- Reveal: 3 seconds; drawing: room timer; mock judging: 2 seconds; results gallery: 15 seconds; leaderboard: 10 seconds. Up to the configured number of rounds. Images autosave every 4 seconds while drawn; on deadline, the server submits the latest saved image. A tab that closes before its first autosave may have no submission.
 - Mock judging **does not recognize drawings**. Submitted drawings get deterministic simulated points and 20 demo coins. The top three who submitted receive 150/100/50 additional coins. No claim of correct-object detection should be made in UI until an AI model is connected.
 - A per-player Durable Object wallet starts at 0. Rewards are keyed by room code and rematch number so retries cannot pay twice. After rewards finish, the host can start a rematch in the same room. Currently the Shop frontend is still preview-only. These demo coins are not proof of accurate AI judging and public monetization needs anti-farming limits.
 - Stored drawings are private to the room's Durable Object, returned to current members only after round results. Match state and balances persist through Worker restarts. Rooms and drawings are not automatically deleted; add retention policies before public launch.

@@ -1,5 +1,5 @@
 export const PROMPTS = ['cat', 'house', 'tree', 'fish', 'flower', 'rocket', 'sun'] as const;
-export type Phase = 'reveal' | 'drawing' | 'judging' | 'results' | 'final';
+export type Phase = 'reveal' | 'drawing' | 'judging' | 'results' | 'leaderboard' | 'final';
 export type Player = { username: string; avatar: Record<string, string> };
 export type Entry = { points: number; submitted: boolean; prediction: string; coins: number };
 export type RoundResult = { round: number; prompt: string; entries: Record<string, Entry> };
@@ -35,10 +35,11 @@ export function advance(match: Match, now: number): Match {
   if (match.phase === 'drawing') return { ...match, phase: 'judging', deadline: now + 2000 };
   if (match.phase === 'judging') {
     const entries: Record<string, Entry> = Object.fromEntries(match.order.map(uid => [uid, match.submitted[uid] ?? { points: 0, submitted: false, prediction: 'No drawing', coins: 0 }]));
-    return { ...match, phase: 'results', deadline: now + 10000,
+    return { ...match, phase: 'results', deadline: now + 15000,
       scores: Object.fromEntries(match.order.map(uid => [uid, match.scores[uid]! + entries[uid]!.points])),
       results: [...match.results, { round: match.round, prompt: match.prompt, entries }] };
   }
+  if (match.phase === 'results') return { ...match, phase: 'leaderboard', deadline: now + 10000 };
   if (match.round < match.rounds) return { ...match, phase: 'reveal', round: match.round + 1, prompt: PROMPTS[match.round % PROMPTS.length]!, deadline: now + 3000, submitted: {} };
   const ranking = match.order.filter(uid => match.results.some(result => result.entries[uid]?.submitted)).sort((a, b) => match.scores[b]! - match.scores[a]! || match.order.indexOf(a) - match.order.indexOf(b));
   const bonuses = [150, 100, 50];

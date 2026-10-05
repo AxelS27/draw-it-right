@@ -10,7 +10,7 @@
     "test:preview": "node --experimental-strip-types --test tests/preview-match.test.mjs",
     "test:audio": "node --experimental-strip-types --test tests/audio.test.mjs",
     "test:room": "node --experimental-strip-types --test tests/room-order.test.mjs",
-    "test:live": "node --experimental-strip-types --test tests/live-engine.test.mjs",
+    "test:live": "node --experimental-strip-types --test tests/live-engine.test.mjs tests/live-ui.test.mjs",
     "build:worker": "npm --prefix worker run build",
     "preview": "vite preview --port 3000"
   },
