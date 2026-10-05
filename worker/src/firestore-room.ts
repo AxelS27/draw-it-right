@@ -25,12 +25,13 @@ export async function firestoreRoom(code: string, token: string, projectId: stri
 }
 
 // Write as the departing/host player, under the existing Firestore Security Rules.
-export async function changeFirestoreRoom(code: string, token: string, projectId: string, uid: string, close: boolean): Promise<boolean> {
+export async function changeFirestoreRoom(code: string, token: string, projectId: string, uid: string, close: boolean, stillDisconnected?: () => boolean): Promise<boolean> {
   const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/rooms/${code}`;
   for (let attempt = 0; attempt < 3; attempt++) {
     const read = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
     if (!read.ok) throw new Error(`Room read failed (${read.status})`);
     const doc = await read.json() as FirestoreDocument;
+    if (stillDisconnected && !stillDisconnected()) return true;
     const status = field(doc.fields.status);
     if (status === 'closed') return true;
     const host = field(doc.fields.host);

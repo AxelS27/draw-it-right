@@ -41,6 +41,17 @@ test('host disconnect hands off to next player; last host closes room', async ()
   assert.deepEqual(JSON.parse(last.calls[1].init.body).fields, { status: { stringValue: 'closed' } });
 });
 
+test('reconnection after room read cancels an in-flight disconnect', async () => {
+  const oldFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = async () => { calls++; return Response.json(document()); };
+  try {
+    const result = await changeFirestoreRoom('123456', 'private-token', 'draw-it-right', 'bob', false, () => false);
+    assert.equal(result, true);
+    assert.equal(calls, 1);
+  } finally { globalThis.fetch = oldFetch; }
+});
+
 test('match completion closes the room as host, not another player', async () => {
   const denied = await runWithFirestore(document(), 'bob', true);
   assert.equal(denied.success, false);

@@ -68,6 +68,16 @@ export class MatchRoom extends DurableObject<Env> {
     if (deadlines.length) await this.ctx.storage.setAlarm(Math.max(Date.now() + 1000, Math.min(...deadlines)));
     else await this.ctx.storage.deleteAlarm();
   }
+  private async updateDisconnect(uid: string, deadline: number | null, expected?: number): Promise<boolean> {
+    return this.ctx.storage.transaction(async storage => {
+      const grace = await storage.get<Record<string, number>>('disconnects') ?? {};
+      if (expected !== undefined && grace[uid] !== expected) return false;
+      if (deadline === null) delete grace[uid];
+      else grace[uid] = deadline;
+      await storage.put('disconnects', grace);
+      return true;
+    });
+  }
   private connected(uid: string, closing?: WebSocket): boolean {
     return this.ctx.getWebSockets().some(socket => {
       if (socket === closing || socket.readyState !== WebSocket.OPEN) return false;
@@ -82,14 +92,15 @@ export class MatchRoom extends DurableObject<Env> {
     const attachment = socket.deserializeAttachment() as { uid?: string; kind?: string } | null;
     try { socket.close(code === 1006 ? 1000 : code, reason); } catch { /* The client already disconnected. */ }
     if (attachment?.kind !== 'presence' || !attachment.uid || this.connected(attachment.uid, socket)) return;
-    const grace = await this.ctx.storage.get<Record<string, number>>('disconnects') ?? {};
-    grace[attachment.uid] = Date.now() + 60000;
-    await this.ctx.storage.put('disconnects', grace);
+    await this.updateDisconnect(attachment.uid, Date.now() + 60000);
     await this.schedule(await this.state());
   }
   private broadcast(match: Match) {
     const message = JSON.stringify({ type: 'match', match: publicMatch(match) });
-    for (const ws of this.ctx.getWebSockets()) { try { ws.send(message); } catch { ws.close(1011, 'Disconnected'); } }
+    for (const ws of this.ctx.getWebSockets()) {
+      if ((ws.deserializeAttachment() as { kind?: string } | null)?.kind === 'presence') continue;
+      try { ws.send(message); } catch { ws.close(1011, 'Disconnected'); }
+    }
   }
   private async save(match: Match) {
     await this.ctx.storage.put('state', match);
@@ -106,8 +117,7 @@ export class MatchRoom extends DurableObject<Env> {
       const token = request.headers.get('X-Room-Token');
       if (!token) return error('Missing login', 401);
       await this.ctx.storage.put(`token:${uid}`, token);
-      const grace = await this.ctx.storage.get<Record<string, number>>('disconnects') ?? {};
-      if (uid in grace) { delete grace[uid]; await this.ctx.storage.put('disconnects', grace); }
+      await this.updateDisconnect(uid, null);
       await this.schedule(match);
       const pair = new WebSocketPair(); const [client, server] = Object.values(pair);
       this.ctx.acceptWebSocket(server); server.serializeAttachment({ uid, kind: 'presence' });
@@ -182,16 +192,14 @@ export class MatchRoom extends DurableObject<Env> {
     const code = this.ctx.id.name;
     if (!code) return;
     const grace = await this.ctx.storage.get<Record<string, number>>('disconnects') ?? {};
-    for (const [uid] of Object.entries(grace).filter(([, time]) => time <= Date.now()).slice(0, 2)) {
-      if (this.connected(uid)) { delete grace[uid]; continue; }
+    for (const [uid, deadline] of Object.entries(grace).filter(([, time]) => time <= Date.now()).slice(0, 2)) {
+      if (this.connected(uid)) { await this.updateDisconnect(uid, null, deadline); continue; }
       try {
         const token = await this.ctx.storage.get<string>(`token:${uid}`);
-        if (!token || !await changeFirestoreRoom(code, token, this.env.FIREBASE_PROJECT_ID, uid, false)) throw new Error('Retry disconnect');
-        delete grace[uid];
-        await this.ctx.storage.delete(`token:${uid}`);
-      } catch { grace[uid] = Date.now() + 10000; }
+        if (!token || !await changeFirestoreRoom(code, token, this.env.FIREBASE_PROJECT_ID, uid, false, () => !this.connected(uid))) throw new Error('Retry disconnect');
+        if (await this.updateDisconnect(uid, null, deadline) && !this.connected(uid)) await this.ctx.storage.delete(`token:${uid}`);
+      } catch { await this.updateDisconnect(uid, Date.now() + 10000, deadline); }
     }
-    await this.ctx.storage.put('disconnects', grace);
   }
   private async finishRoom(match: Match) {
     const code = this.ctx.id.name;
