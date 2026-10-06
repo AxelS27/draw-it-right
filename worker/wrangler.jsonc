@@ -5,7 +5,7 @@
   "compatibility_date": "2025-08-01",
   "vars": {
     "FIREBASE_PROJECT_ID": "draw-it-right",
-    "ALLOWED_ORIGINS": "http://localhost:3000"
+    "ALLOWED_ORIGINS": "http://localhost:3000,https://draw-it-right.vercel.app"
   },
   "durable_objects": {
     "bindings": [
