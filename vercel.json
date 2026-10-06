@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/room/:path*", "destination": "/index.html" },
+    { "source": "/shop", "destination": "/index.html" }
+  ]
+}

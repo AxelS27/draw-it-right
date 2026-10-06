@@ -10,7 +10,8 @@ export type MatchState = {
   awards: Record<string, number>; rewardsComplete: boolean;
 };
 export type Wallet = { balance: number; owned: string[] };
-export const matchApi = import.meta.env.VITE_MATCH_API_URL || (location.hostname === 'localhost' ? 'http://localhost:8787' : '');
+// The Worker URL is public. Keep production usable when a Vercel build omits the optional override.
+export const matchApi = import.meta.env.VITE_MATCH_API_URL?.trim() || (location.hostname === 'localhost' ? 'http://localhost:8787' : 'https://draw-it-right-match.farrellaxel2006.workers.dev');
 
 async function token(): Promise<string> {
   const user = auth.currentUser;
