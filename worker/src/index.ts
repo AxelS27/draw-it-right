@@ -31,7 +31,21 @@ export default {
     const fail = (message: string, status: number) => Response.json({ error: message }, { status, headers: cors });
     try {
       const url = new URL(request.url);
-      if (url.pathname === '/health' && request.method === 'GET') return Response.json({ ok: true }, { headers: cors });
+      if (url.pathname === '/health' && request.method === 'GET') {
+        const configured = Boolean(env.INFERENCE_URL?.startsWith('https://') && env.INFERENCE_SECRET);
+        // Only the laptop can request an end-to-end probe. Ordinary public health
+        // checks don't send outbound traffic to the temporary tunnel.
+        if (configured && request.headers.get('X-Inference-Secret') === env.INFERENCE_SECRET) {
+          try {
+            const upstream = await fetch(`${env.INFERENCE_URL!.replace(/\/$/, '')}/health`, {
+              headers: { 'X-Inference-Secret': env.INFERENCE_SECRET! }, signal: AbortSignal.timeout(5000),
+            });
+            const body = await upstream.json() as { ok?: unknown; authorized?: unknown };
+            return Response.json({ ok: true, inferenceConfigured: true, inferenceReady: upstream.ok && body.ok === true && body.authorized === true }, { headers: cors });
+          } catch { return Response.json({ ok: true, inferenceConfigured: true, inferenceReady: false }, { headers: cors }); }
+        }
+        return Response.json({ ok: true, inferenceConfigured: configured }, { headers: cors });
+      }
       const route = /^\/rooms\/(\d{6})\/(presence|socket|submit|draft|drawing\/\d+\/[A-Za-z0-9_-]+)$/.exec(url.pathname);
       const socket = route?.[2] === 'socket' || route?.[2] === 'presence';
       const protocols = request.headers.get('Sec-WebSocket-Protocol')?.split(',').map(s => s.trim()) ?? [];

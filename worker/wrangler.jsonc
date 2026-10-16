@@ -1,6 +1,7 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "draw-it-right-match",
+  "account_id": "403f2dc05e335385f92b0881869cb3fa",
   "main": "src/index.ts",
   "compatibility_date": "2025-08-01",
   "vars": {

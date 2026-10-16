@@ -80,7 +80,9 @@ def predict(images: list[str]) -> list[dict | None]:
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/health":
-            self.respond(200, {"ok": True})
+            secret = os.environ.get("INFERENCE_SECRET", "")
+            authorized = bool(secret) and hmac.compare_digest(self.headers.get("X-Inference-Secret", ""), secret)
+            self.respond(200, {"ok": True, "authorized": authorized})
         else:
             self.respond(404, {"error": "Not found"})
 

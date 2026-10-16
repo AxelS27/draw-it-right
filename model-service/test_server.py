@@ -36,7 +36,13 @@ class InferenceTests(unittest.TestCase):
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
         try:
-            url = f'http://127.0.0.1:{server.server_port}/predict'
+            base = f'http://127.0.0.1:{server.server_port}'
+            with urllib.request.urlopen(base + '/health') as response:
+                self.assertFalse(json.load(response)['authorized'])
+            authorized = urllib.request.Request(base + '/health', headers={'X-Inference-Secret': 'test-only-secret'})
+            with urllib.request.urlopen(authorized) as response:
+                self.assertTrue(json.load(response)['authorized'])
+            url = base + '/predict'
             data = json.dumps({'prompt': 'circle', 'images': [drawing()]}).encode()
             with self.assertRaises(urllib.error.HTTPError) as denied:
                 urllib.request.urlopen(urllib.request.Request(url, data=data))
