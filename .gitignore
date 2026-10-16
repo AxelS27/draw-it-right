@@ -1,0 +1,16 @@
+model-service/best_quickdraw_model.keras
+model-service/*.download
+model-service/.local-secret
+model-service/cloudflared.exe
+model-service/.venv/
+model-service/__pycache__/
+node_modules/
+dist/
+.wrangler/
+.env
+.env.*
+!.env.example
+*.log
+AGENTS.md
+Mind_Duel_Game_Overview (3).pdf
+idea.txt

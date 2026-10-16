@@ -17,5 +17,10 @@ test('live drawing keeps the preview canvas, tools, chat, header and reveal layo
     }
     assert.match(preview, /PREVIEW/);
     assert.match(live, /LIVE MATCH/);
+    assert.match(live, /Judging is simulated on this server/);
+    const aiLive = renderToStaticMarkup(createElement(DrawingRound, { ...props, live: { revealing: true, remaining: 3, submitted: false, judgingMode: 'model', async onSubmit() {}, async onDraft() {} } }));
+    assert.match(aiLive, /Draw with black ink on white/);
+    assert.match(aiLive, /aria-label="Straight line"/);
+    assert.doesNotMatch(aiLive, /aria-label="Brush color"/);
   } finally { await vite.close(); }
 });

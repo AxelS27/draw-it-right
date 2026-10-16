@@ -4,7 +4,7 @@ import type { Profile } from './profile';
 export const previewPrompts = ['cat', 'house', 'tree', 'fish', 'flower', 'rocket', 'sun'] as const;
 export type PreviewPrompt = typeof previewPrompts[number];
 export type Entrant = { id: number; profile: Profile; isYou: boolean };
-export type RoundDrawing = { entrant: Entrant; image: string; points: number };
+export type RoundDrawing = { entrant: Entrant; image: string; points: number; prediction?: string; confidence?: number };
 export type RoundResult = { round: number; prompt: string; multiplier: number; drawings: RoundDrawing[] };
 export type Standing = { entrant: Entrant; total: number; added: number };
 export type MatchPhase = 'drawing' | 'waiting' | 'judging' | 'results' | 'leaderboard' | 'final';

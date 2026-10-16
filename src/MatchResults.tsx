@@ -9,6 +9,7 @@ function DrawingCard({ drawing, rank, winner = false }: { drawing: RoundDrawing;
   return <article className={`result-drawing${winner ? ' is-winner' : ''}${drawing.entrant.isYou ? ' is-you' : ''}`}>
     <div className="result-drawing-image"><img src={drawing.image} alt={`${drawing.entrant.profile.username}'s drawing`} loading={winner ? 'eager' : 'lazy'}/><span className={`result-place place-${rank}`}>#{rank}</span></div>
     <div className="result-drawing-caption"><span title={drawing.entrant.profile.username}>{drawing.entrant.profile.username}{drawing.entrant.isYou && <small> · you</small>}</span><strong>{drawing.points.toLocaleString()}<small> pts</small></strong></div>
+    {drawing.prediction && <div className="result-ai-prediction">AI guessed: {drawing.prediction}{drawing.confidence !== undefined ? ` · ${Math.round(drawing.confidence * 100)}% model confidence` : ''}</div>}
   </article>;
 }
 
@@ -17,6 +18,7 @@ export function RoundGallery({ result }: { result: RoundResult }) {
   const own = result.drawings[ownIndex];
   return <>
     <div className="match-section-heading"><div><span>ROUND {result.round} · {result.prompt.toUpperCase()}</span><h2>This round’s stars</h2></div>{own && <div className="match-your-score">You placed <strong>#{ownIndex + 1}</strong><span>+{own.points.toLocaleString()} pts{result.multiplier === 2 ? ' · 2× round' : ''}</span></div>}</div>
+    {own?.prediction && <p className="match-own-prediction">Your drawing: AI guessed <strong>{own.prediction}</strong> ({Math.round((own.confidence ?? 0) * 100)}% model confidence), +{own.points.toLocaleString()} points.</p>}
     <div className="match-top-drawings">{result.drawings.slice(0, 3).map((drawing, index) => <DrawingCard key={drawing.entrant.id} drawing={drawing} rank={index + 1} winner/>)}</div>
     {result.drawings.length > 3 && <>
       <div className="match-gallery-heading"><h3>More masterpieces</h3><span>Highest to lowest score · {result.drawings.length - 3} drawings</span></div>

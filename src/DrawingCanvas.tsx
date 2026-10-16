@@ -1,9 +1,8 @@
 import { useEffect, useImperativeHandle, useRef, useState, type PointerEvent, type Ref } from 'react';
-import { Eraser, Pencil, Redo2, Trash2, Undo2 } from 'lucide-react';
+import { Eraser, Minus, Pencil, Redo2, Trash2, Undo2 } from 'lucide-react';
 
 type Point = { x: number; y: number };
-type Stroke = { points: Point[]; color: string; size: number };
-const colors = [['Black', '#243746'], ['White', '#ffffff'], ['Red', '#e65050'], ['Orange', '#f39439'], ['Yellow', '#f4cf45'], ['Green', '#4baf73'], ['Blue', '#4386db'], ['Purple', '#9963ce']];
+type Stroke = { points: Point[]; color: string; size: number; line: boolean };
 
 export type DrawingCanvasHandle = { snapshot: (format?: 'png' | 'jpeg') => string; hasDrawing: () => boolean };
 
@@ -13,9 +12,9 @@ export function DrawingCanvas({ locked, ref, onEmpty }: { locked: boolean; ref?:
   const undone = useRef<Stroke[]>([]);
   const current = useRef<Stroke | null>(null);
   const pointer = useRef<number | null>(null);
-  const [color, setColor] = useState('#243746');
   const [size, setSize] = useState(8);
-  const [eraser, setEraser] = useState(false);
+  const [tool, setTool] = useState<'brush' | 'line' | 'eraser'>('brush');
+  const eraser = tool === 'eraser';
   const [canvasScale, setCanvasScale] = useState(1);
   const eraserDiameter = Math.max(1, size * 3 * canvasScale);
   const cursorSize = Math.ceil(eraserDiameter / 2 + 2) * 2;
@@ -79,13 +78,14 @@ export function DrawingCanvas({ locked, ref, onEmpty }: { locked: boolean; ref?:
     event.currentTarget.setPointerCapture(event.pointerId);
     pointer.current = event.pointerId;
     undone.current = [];
-    current.current = { points: [point(event)], color: eraser ? '#ffffff' : color, size: eraser ? size * 3 : size };
+    current.current = { points: [point(event)], color: eraser ? '#ffffff' : '#000000', size: eraser ? size * 3 : size, line: tool === 'line' };
     paint();
     syncHistory();
   }
   function move(event: PointerEvent<HTMLCanvasElement>) {
     if (locked || pointer.current !== event.pointerId || !current.current) return;
-    current.current.points.push(point(event));
+    if (current.current.line) current.current.points = [current.current.points[0]!, point(event)];
+    else current.current.points.push(point(event));
     paint();
   }
   function changeHistory(redo: boolean) {
@@ -101,8 +101,7 @@ export function DrawingCanvas({ locked, ref, onEmpty }: { locked: boolean; ref?:
   return <>
     <div className="drawing-paper"><canvas ref={canvas} width={800} height={500} style={{ cursor }} aria-label="Drawing canvas. Use a mouse, touch, or pen to draw." onPointerDown={down} onPointerMove={move} onPointerUp={event => { if (pointer.current === event.pointerId) { move(event); finish(); } }} onPointerCancel={event => { if (pointer.current === event.pointerId) finish(); }} onLostPointerCapture={event => { if (pointer.current === event.pointerId) finish(); }}/></div>
     <fieldset className="drawing-tools" disabled={locked} aria-label="Drawing tools">
-      <div className="drawing-tool-group"><button type="button" title="Brush" aria-label="Brush" aria-pressed={!eraser} onClick={() => setEraser(false)}><Pencil size={19}/></button><button type="button" title="Eraser" aria-label="Eraser" aria-pressed={eraser} onClick={() => setEraser(true)}><Eraser size={19}/></button></div>
-      <div className="drawing-tool-group drawing-colors" role="group" aria-label="Brush color">{colors.map(([label, value]) => <button key={value} type="button" title={label} aria-label={label} aria-pressed={color === value && !eraser} onClick={() => { setColor(value!); setEraser(false); }}><span style={{ background: value }}>{color === value && !eraser ? <span style={{ color: value === '#243746' || value === '#9963ce' ? '#fff' : '#243746' }}>✓</span> : null}</span></button>)}</div>
+      <div className="drawing-tool-group"><button type="button" title="Brush" aria-label="Brush" aria-pressed={tool === 'brush'} onClick={() => setTool('brush')}><Pencil size={19}/></button><button type="button" title="Straight line" aria-label="Straight line" aria-pressed={tool === 'line'} onClick={() => setTool('line')}><Minus size={19}/></button><button type="button" title="Eraser" aria-label="Eraser" aria-pressed={eraser} onClick={() => setTool('eraser')}><Eraser size={19}/></button></div>
       <div className="drawing-tool-group" role="group" aria-label="Brush size">{[4, 8, 16].map((value, index) => <button key={value} type="button" aria-label={`${['Small', 'Medium', 'Large'][index]} brush`} aria-pressed={size === value} onClick={() => setSize(value)}><span className="drawing-size-dot" style={{ width: value + 2, height: value + 2 }}/></button>)}</div>
       <div className="drawing-tool-group"><button type="button" aria-label="Undo" title="Undo" disabled={!history.undo} onClick={() => changeHistory(false)}><Undo2 size={19}/></button><button type="button" aria-label="Redo" title="Redo" disabled={!history.redo} onClick={() => changeHistory(true)}><Redo2 size={19}/></button><button type="button" aria-label="Clear canvas" title="Clear canvas" disabled={!history.undo} onClick={() => clearDialog.current?.showModal()}><Trash2 size={19}/></button></div>
     </fieldset>

@@ -1,6 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
-import { advance, createMatch, publicMatch, submit, type Match } from './engine';
+import { advance, createMatch, finishJudging, publicMatch, submit, type Match, type Prediction } from './engine';
 import { changeFirestoreRoom, firestoreRoom, type RoomInfo } from './firestore-room';
 
 interface Env {
@@ -8,6 +8,8 @@ interface Env {
   WALLETS: DurableObjectNamespace<PlayerWallet>;
   FIREBASE_PROJECT_ID: string;
   ALLOWED_ORIGINS: string;
+  INFERENCE_URL?: string;
+  INFERENCE_SECRET?: string;
 }
 const jwks = createRemoteJWKSet(new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com'));
 const prices: Record<string, number> = { crown: 350, headphones: 250, bow: 150, shades: 200, cat: 400, bunny: 400, robot: 450, bear: 400, rose: 100, lilac: 100, gold: 100 };
@@ -241,10 +243,49 @@ export class MatchRoom extends DurableObject<Env> {
       }
       if (updated !== match) { match = updated; await this.ctx.storage.put('state', match); }
     }
+    if (match.phase === 'judging' && Date.now() >= match.deadline) {
+      try {
+        const predictions = await this.predict(match);
+        const latest = await this.state();
+        if (latest?.phase === 'judging' && latest.session === match.session && latest.round === match.round) {
+          await this.save(finishJudging(latest, predictions, Date.now()));
+        }
+      } catch (failure) {
+        console.error('Inference failed, retrying', failure);
+        const latest = await this.state();
+        if (latest?.phase === 'judging') await this.save({ ...latest, deadline: Date.now() + 5000 });
+      }
+      return;
+    }
     const next = advance(match, Date.now());
     if (next !== match) await this.save(next);
     else await this.schedule(match);
     if (next.phase === 'final') await this.award(next);
+  }
+  private async predict(match: Match): Promise<Record<string, Prediction>> {
+    const ids = match.order.filter(uid => match.submitted[uid]);
+    if (!ids.length) return {};
+    if (!this.env.INFERENCE_URL || !this.env.INFERENCE_SECRET || !this.env.INFERENCE_URL.startsWith('https://')) throw new Error('Inference service not configured');
+    const images = await Promise.all(ids.map(uid => this.ctx.storage.get<string>(`image:${match.session}:${match.round}:${uid}`)));
+    if (images.some(image => !image)) throw new Error('Submitted image missing');
+    const response = await fetch(`${this.env.INFERENCE_URL.replace(/\/$/, '')}/predict`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Inference-Secret': this.env.INFERENCE_SECRET },
+      body: JSON.stringify({ prompt: match.prompt, images }), signal: AbortSignal.timeout(90000),
+    });
+    if (!response.ok) throw new Error(`Inference HTTP ${response.status}`);
+    const body = await response.json() as { predictions?: unknown };
+    if (!Array.isArray(body.predictions) || body.predictions.length !== ids.length) throw new Error('Invalid inference response');
+    const predictions: Record<string, Prediction> = {};
+    const rows = body.predictions as unknown[];
+    ids.forEach((uid, i) => {
+      const value: unknown = rows[i];
+      if (value === null) { predictions[uid] = null; return; }
+      if (typeof value !== 'object' || value === null || !('class' in value) || !('confidence' in value) || !('targetConfidence' in value) ||
+        typeof value.class !== 'string' || typeof value.confidence !== 'number' || typeof value.targetConfidence !== 'number' ||
+        !Number.isFinite(value.confidence) || !Number.isFinite(value.targetConfidence) || value.confidence < 0 || value.confidence > 1 || value.targetConfidence < 0 || value.targetConfidence > 1) throw new Error('Invalid prediction');
+      predictions[uid] = { class: value.class, confidence: value.confidence, targetConfidence: value.targetConfidence };
+    });
+    return predictions;
   }
   private async award(match: Match) {
     const roomCode = this.ctx.id.name;

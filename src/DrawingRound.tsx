@@ -6,7 +6,7 @@ import type { RoomOptions } from './RoomPages';
 import './drawing-round.css';
 import { gameAudio } from './audio';
 
-type LiveRound = { revealing: boolean; remaining: number; submitted: boolean; onSubmit: (image: string) => Promise<void>; onDraft: (image: string | null) => Promise<void> };
+type LiveRound = { revealing: boolean; remaining: number; submitted: boolean; judgingMode?: 'model'; onSubmit: (image: string) => Promise<void>; onDraft: (image: string | null) => Promise<void> };
 type Props = { options: RoomOptions; round: number; prompt: string; messages: ChatMessage[]; onSend: (text: string) => void | Promise<void>; onBack: () => void; onSubmit: (image: string, early: boolean) => void; live?: LiveRound };
 export function DrawingRound({ options, round, prompt, messages, onSend, onBack, onSubmit, live }: Props) {
   const [startedAt] = useState(() => Date.now());
@@ -80,7 +80,7 @@ export function DrawingRound({ options, round, prompt, messages, onSend, onBack,
       <div className={`drawing-clock${!revealing && remaining <= 10 ? ' is-urgent' : ''}`} aria-label={revealing ? 'Get ready' : `${remaining} seconds remaining`}><Clock3 size={21}/><strong>{revealing ? `${options.timer}s` : `${remaining}s`}</strong></div>
       <button className="drawing-chat-toggle waiting-icon-button" aria-label="Open room chat" onClick={() => chatDialog.current?.showModal()}><MessageCircle size={21}/></button>
     </header>
-    <p className="drawing-preview-note">{live ? 'Shared round · server-timed. Judging is simulated, not real AI.' : 'Local preview. Sample results, not real AI scores.'}</p>
+    <p className="drawing-preview-note">{live ? live.judgingMode === 'model' ? 'Shared round · server-timed. Draw with black ink on white.' : 'Shared round · server-timed. Judging is simulated on this server.' : 'Local preview. Sample results, not real AI scores.'}</p>
     <div className="drawing-layout">
       <section className="drawing-workspace" aria-label="Your drawing">
         <div className="drawing-editor">

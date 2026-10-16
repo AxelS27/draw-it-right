@@ -1,6 +1,8 @@
 .match-main { display: flex; flex-direction: column; gap: 12px; min-width: 0; min-height: 0; }
 .match-content { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 24px; background: #183d5359; border: 1px solid #ffffff28; border-radius: 22px; scrollbar-color: #8cabb5 transparent; }
 .match-content.is-busy { display: flex; }
+.result-ai-prediction { padding: 0 14px 12px; font-size: 13px; color: #d2e2e8; }
+.match-own-prediction { color: #d2e2e8; padding: 8px 0 16px; }
 .match-judging { margin: auto; padding: 18px 0; text-align: center; }
 .match-judging-icon { display: grid; place-items: center; width: 88px; height: 88px; margin: 0 auto 20px; border-radius: 28px; background: #ffdf91; color: #705329; box-shadow: 0 8px 30px #102b4630; }
 .match-judging h2, .match-section-heading h2, .match-final-heading h2 { font-family: 'Fredoka', sans-serif; font-size: clamp(26px, 3vw, 36px); font-weight: 500; }
