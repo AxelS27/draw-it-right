@@ -130,6 +130,11 @@ service cloud.firestore {
                 ? request.resource.data.host == resource.data.joinOrder.removeAll([resource.data.host])[0]
                 : request.resource.data.host == request.resource.data.joinOrder[0]))
             || (resource.data.status == 'waiting'
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['players', 'joinOrder'])
+              && resource.data.players.keys().removeAll(request.resource.data.players.keys()).size() == 1
+              && resource.data.players.keys().removeAll(request.resource.data.players.keys())[0] != resource.data.host
+              && validRemoval(resource.data.players.keys().removeAll(request.resource.data.players.keys())[0]))
+            || (resource.data.status == 'waiting'
               && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['players', 'joinOrder', 'banned'])
               && request.resource.data.banned.size() == resource.data.banned.size() + 1
               && request.resource.data.banned == resource.data.banned.concat([request.resource.data.banned[resource.data.banned.size()]])

@@ -10,7 +10,7 @@ import { matchRequest } from './match-api';
 import { useAudioScene } from './useAudio';
 import './waiting-room.css';
 
-type Props = { room: Room; uid: string; code: string; duration: string; busy: boolean; notice: string; onEdit: () => void; onCopy: (value: string, label: string) => Promise<void>; onAction: (action: 'settings' | 'lock' | 'start' | 'leave' | 'remove' | 'transfer' | 'close', value?: RoomOptions | string) => void };
+type Props = { room: Room; uid: string; code: string; duration: string; busy: boolean; notice: string; onEdit: () => void; onCopy: (value: string, label: string) => Promise<void>; onAction: (action: 'settings' | 'lock' | 'start' | 'leave' | 'kick' | 'ban' | 'transfer' | 'close', value?: RoomOptions | string) => void };
 export function WaitingRoom({ room, uid, code, duration, busy, notice, onEdit, onCopy, onAction }: Props) {
   useAudioScene('waiting', 1);
   useEffect(() => { void matchRequest('/health').catch(() => undefined); }, []);
@@ -52,6 +52,7 @@ export function WaitingRoom({ room, uid, code, duration, busy, notice, onEdit, o
     <div className="waiting-layout waiting-live-layout"><div className="waiting-player-column"><section className="waiting-crew" aria-labelledby="waiting-crew-title">
       <div className="waiting-crew-heading"><h2 id="waiting-crew-title"><Users size={18}/><span>{count}<small> / {room.options.capacity} players</small></span></h2>{isHost && room.status === 'waiting' && <button type="button" className="waiting-icon-button" disabled={busy} aria-label={room.locked ? 'Unlock room' : 'Lock room'} aria-pressed={room.locked} onClick={() => onAction('lock')}>{room.locked ? <LockKeyhole size={17}/> : <UnlockKeyhole size={17}/>}</button>}</div>
       <div className="waiting-settings-strip" aria-label="Room settings">
+        <strong className="waiting-settings-label">Room settings</strong>
         <span>{room.options.rounds} {room.options.rounds === 1 ? 'round' : 'rounds'}</span>
         <span>{duration}</span>
         <span>{room.options.doublePoints ? '2× finale' : '1× finale'}</span>
@@ -75,6 +76,6 @@ export function WaitingRoom({ room, uid, code, duration, busy, notice, onEdit, o
       <p className="waiting-qr-link">{inviteUrl}</p>
       {localInvite && <p className="waiting-qr-local">For phones to join, open this room on your published site. A localhost link only works on this computer.</p>}
     </dialog>
-    <dialog ref={playerDialog} className="waiting-player-dialog" aria-labelledby="waiting-player-title" onClose={() => setSelected(null)}>{selectedProfile && <><button type="button" className="waiting-icon-button waiting-dialog-close" aria-label="Close player options" onClick={() => setSelected(null)}><X size={20}/></button><AvatarPreview avatar={selectedProfile.avatar}/><h2 id="waiting-player-title">{selectedProfile.username}</h2><p>{selected === room.host ? 'Room host' : selected === uid ? 'That’s you!' : 'Player in this room'}</p>{isHost && selected !== uid && <button className="room-primary" disabled={busy} type="button" onClick={() => { if (window.confirm(`Make ${selectedProfile.username} the new host?`)) { onAction('transfer', selected!); setSelected(null); } }}>Make host</button>}{isHost && selected !== uid && room.status === 'waiting' && <button className="room-secondary" disabled={busy} type="button" onClick={() => { onAction('remove', selected!); setSelected(null); }}>Remove player</button>}</>}</dialog>
+    <dialog ref={playerDialog} className="waiting-player-dialog" aria-labelledby="waiting-player-title" onClose={() => setSelected(null)}>{selectedProfile && <><button type="button" className="waiting-icon-button waiting-dialog-close" aria-label="Close player options" onClick={() => setSelected(null)}><X size={20}/></button><AvatarPreview avatar={selectedProfile.avatar}/><h2 id="waiting-player-title">{selectedProfile.username}</h2><p>{selected === room.host ? 'Room host' : selected === uid ? 'That’s you!' : 'Player in this room'}</p>{isHost && selected !== uid && <button className="room-primary" disabled={busy} type="button" onClick={() => { if (window.confirm(`Make ${selectedProfile.username} the new host?`)) { onAction('transfer', selected!); setSelected(null); } }}>Make host</button>}{isHost && selected !== uid && room.status === 'waiting' && <><button className="room-secondary" disabled={busy} type="button" onClick={() => { onAction('kick', selected!); setSelected(null); }}>Kick player</button><button className="room-secondary waiting-end-room" disabled={busy} type="button" onClick={() => { onAction('ban', selected!); setSelected(null); }}>Ban player</button></>}</>}</dialog>
   </main>;
 }

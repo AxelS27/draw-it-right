@@ -107,7 +107,7 @@ export async function syncMemberProfile(code: string, uid: string, profile: Prof
   });
 }
 
-export async function changeRoom(code: string, uid: string, action: 'settings' | 'lock' | 'start' | 'reopen' | 'leave' | 'remove' | 'transfer' | 'close', value?: RoomOptions | string): Promise<void> {
+export async function changeRoom(code: string, uid: string, action: 'settings' | 'lock' | 'start' | 'reopen' | 'leave' | 'kick' | 'ban' | 'transfer' | 'close', value?: RoomOptions | string): Promise<void> {
   await runTransaction(getFirestore(auth.app), async transaction => {
     const ref = roomRef(code);
     const snapshot = await transaction.get(ref);
@@ -146,10 +146,13 @@ export async function changeRoom(code: string, uid: string, action: 'settings' |
     else if (action === 'start') {
       if (Object.keys(room.players).length < 2) throw new Error('At least 2 players are needed to start.');
       transaction.update(ref, { status: 'started' });
-    } else if (action === 'remove') {
+    } else if (action === 'kick' || action === 'ban') {
       const target = value as string;
       if (target === uid || !room.players[target]) throw new Error('Player is no longer here.');
-      const players = { ...room.players }; delete players[target]; transaction.update(ref, { players, joinOrder: remainingJoinOrder(room.joinOrder, target), banned: [...room.banned, target] });
+      const players = { ...room.players };
+      delete players[target];
+      const banned = action === 'ban' && !room.banned.includes(target) ? [...room.banned, target] : room.banned;
+      transaction.update(ref, { players, joinOrder: remainingJoinOrder(room.joinOrder, target), banned });
     }
   });
 }
