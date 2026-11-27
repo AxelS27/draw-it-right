@@ -253,7 +253,7 @@ export function DrawingRound({ options, round, prompt, messages, onSend, onBack,
           )}
         </div>
         {options.reactions && live?.reactions ? (
-          <RoomReactions code={live.reactions.code} uid={live.reactions.uid} players={live.reactions.players}/>
+          <RoomReactions code={live.reactions.code} uid={live.reactions.uid} players={live.reactions.players} edgesOnly/>
         ) : (
           <div className="drawing-actions">
             <div role="status">{!live && !revealing ? 'Draw until the timer ends!' : ''}</div>

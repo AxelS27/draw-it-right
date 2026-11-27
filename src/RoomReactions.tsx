@@ -5,7 +5,7 @@ import type { Profile } from './profile';
 const labels = ['Wave', 'Laugh', 'Fire', 'Love', 'Celebrate'] as const;
 type FloatingReaction = { id: number; symbol: ReactionSymbol; name: string; left: number; drift: number; expires: number };
 
-export function RoomReactions({ code, uid, players }: { code: string; uid: string; players: Record<string, Profile> }) {
+export function RoomReactions({ code, uid, players, edgesOnly = false }: { code: string; uid: string; players: Record<string, Profile>; edgesOnly?: boolean }) {
   const [active, setActive] = useState<FloatingReaction[]>([]);
   const [error, setError] = useState('');
   const [announcement, setAnnouncement] = useState('');
@@ -16,7 +16,9 @@ export function RoomReactions({ code, uid, players }: { code: string; uid: strin
   playersRef.current = players;
 
   function spawn(name: string, symbol: ReactionSymbol) {
-    setActive(current => [...current.slice(-35), { id: nextId.current++, symbol, name, left: 16 + Math.random() * 68, drift: Math.random() * 84 - 42, expires: Date.now() + 4300 }]);
+    const left = edgesOnly ? (Math.random() < 0.5 ? 4 + Math.random() * 7 : 89 + Math.random() * 7) : 16 + Math.random() * 68;
+    const drift = edgesOnly ? Math.random() * 20 - 10 : Math.random() * 84 - 42;
+    setActive(current => [...current.slice(-35), { id: nextId.current++, symbol, name, left, drift, expires: Date.now() + 4300 }]);
     setAnnouncement(`${name} reacted.`);
   }
 
