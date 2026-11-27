@@ -141,8 +141,8 @@
 .podium-2 { order: 1; }
 .podium-3 { order: 3; }
 .podium-3 > div { height: 65px; }
-.match-leave-button { background: #e05a54; border-color: #c7433d; border-bottom: 3px solid #a9322d; color: #fff9ef; }
-.match-leave-button:hover:not(:disabled) { background: #ec6d67; }
+.room-secondary.match-leave-button { background: #e05a54; border-color: #c7433d; border-bottom: 3px solid #a9322d; color: #fff9ef; }
+.room-secondary.match-leave-button:hover:not(:disabled) { background: #ec6d67; }
 @keyframes match-spin { to { transform: rotate(360deg); } }
 @media (max-width: 1100px) { .match-gallery { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 600px) {
