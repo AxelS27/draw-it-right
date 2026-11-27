@@ -15,9 +15,9 @@ const choices = {
 export type Avatar = { [K in keyof typeof choices]: typeof choices[K][number] };
 export const avatarOptions: { [K in keyof Avatar]: readonly Avatar[K][] } = choices;
 export const freeAvatarOptions: { [K in keyof Avatar]: readonly Avatar[K][] } = {
-  base: ['bean'],
-  color: ['mint'],
-  face: ['smile'],
+  base: ['bean', 'cat', 'bear', 'bunny', 'blob'],
+  color: ['mint', 'gold', 'rose', 'blue', 'lilac'],
+  face: ['smile', 'wink', 'happy', 'surprised', 'sleepy'],
   accessory: ['none', 'antlers', 'beard', 'elf', 'scarf'],
 };
 export function unlockedAvatarOptions(owned: readonly string[] = []): { [K in keyof Avatar]: readonly Avatar[K][] } {
