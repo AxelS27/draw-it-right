@@ -3,7 +3,7 @@ import { onSnapshot, setDoc } from 'firebase/firestore';
 import { AvatarPreview } from './AvatarPreview';
 import { AvatarPicker } from './AvatarPicker';
 import { Shuffle, RotateCcw } from 'lucide-react';
-import { avatarOptions, defaultAvatar, parseProfile, profileRef, validUsername, type Avatar, type Profile } from './profile';
+import { defaultAvatar, freeAvatarOptions, parseProfile, profileRef, validUsername, type Avatar, type Profile } from './profile';
 import './profile.css';
 
 type Props = { uid: string; onProfile: (profile: Profile) => void; onLogout: () => Promise<void>; loggingOut: boolean };
@@ -78,7 +78,7 @@ export function ProfileSetup({ uid, onProfile, onLogout, loggingOut }: Props) {
 
   function randomize() {
     const pick = <T,>(items: readonly T[]): T => items[Math.floor(Math.random() * items.length)]!;
-    setAvatar({ base: pick(avatarOptions.base), color: pick(avatarOptions.color), face: pick(avatarOptions.face), accessory: pick(avatarOptions.accessory) });
+    setAvatar({ base: pick(freeAvatarOptions.base), color: pick(freeAvatarOptions.color), face: pick(freeAvatarOptions.face), accessory: pick(freeAvatarOptions.accessory) });
   }
 
   const isFormOpen = status === 'required';
@@ -102,7 +102,7 @@ export function ProfileSetup({ uid, onProfile, onLogout, loggingOut }: Props) {
             <button type="button" aria-label="Reset character" title="Reset" disabled={saving} onClick={() => setAvatar(defaultAvatar)}><RotateCcw size={17}/></button>
           </div>
         </div>
-        <AvatarPicker avatar={avatar} disabled={saving} onChange={setAvatar}/>
+        <AvatarPicker avatar={avatar} disabled={saving} allowed={freeAvatarOptions} onChange={setAvatar}/>
       </div>}
       {error && <p className="setup-error" role="alert">{error}</p>}
     </form>}

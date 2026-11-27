@@ -4,12 +4,13 @@ import { Check, LogOut, Palette, RotateCcw, Settings as SettingsIcon, Shuffle, U
 import { AvatarPicker } from './AvatarPicker';
 import { AvatarPreview } from './AvatarPreview';
 import { SoundSettings } from './SoundSettings';
-import { avatarOptions, defaultAvatar, profileRef, validUsername, type Avatar, type Profile } from './profile';
+import { avatarOptions, defaultAvatar, profileRef, unlockedAvatarOptions, validUsername, type Avatar, type Profile } from './profile';
 import './settings.css';
 
 type Props = {
   uid: string;
   profile: Profile;
+  owned?: readonly string[];
   onSave: (profile: Profile) => void;
   onClose: () => void;
   onLogout: () => Promise<void>;
@@ -22,7 +23,8 @@ const sections = {
   sound: { title: 'Sound', description: 'Your music. Your effects. Your volume.', Icon: Volume2 },
 };
 
-export function Settings({ uid, profile, onSave, onClose, onLogout, loggingOut, logoutError }: Props) {
+export function Settings({ uid, profile, owned, onSave, onClose, onLogout, loggingOut, logoutError }: Props) {
+  const unlocked = unlockedAvatarOptions(owned);
   const dialog = useRef<HTMLDialogElement>(null);
   const savingRef = useRef(false);
   const [section, setSection] = useState<keyof typeof sections>('account');
@@ -66,7 +68,7 @@ export function Settings({ uid, profile, onSave, onClose, onLogout, loggingOut, 
 
   function randomize() {
     const pick = <T,>(items: readonly T[]): T => items[Math.floor(Math.random() * items.length)]!;
-    changeAvatar({ base: pick(avatarOptions.base), color: pick(avatarOptions.color), face: pick(avatarOptions.face), accessory: pick(avatarOptions.accessory) });
+    changeAvatar({ base: pick(unlocked.base), color: pick(unlocked.color), face: pick(unlocked.face), accessory: pick(unlocked.accessory) });
   }
 
   async function save(event: FormEvent<HTMLFormElement>) {
@@ -110,7 +112,7 @@ export function Settings({ uid, profile, onSave, onClose, onLogout, loggingOut, 
           <div className="settings-profile-banner"><div className="settings-profile-avatar"><AvatarPreview avatar={avatar}/></div><div><strong>{username.trim() || 'Your name'}</strong><span>This is how friends see you in the game.</span><button type="button" onClick={() => setSection('avatar')}>Customize avatar <Palette size={14}/></button></div></div>
           <div className="settings-field"><label htmlFor="settings-username">Display name</label><input id="settings-username" value={username} disabled={busy} maxLength={16} autoComplete="nickname" aria-invalid={!valid} aria-describedby="settings-name-hint" onChange={event => { setUsername(event.target.value); setMessage(''); setPendingExit(null); }}/><p id="settings-name-hint">3-16 characters. Start with a letter; use letters, numbers or underscores.</p>{!valid && <p className="settings-error">Enter a valid display name before saving.</p>}</div>
           <div className="settings-logout"><div><strong>Log out</strong><p>You can log back in with Google anytime.</p></div><button type="button" disabled={busy} onClick={() => { setError(''); setPendingExit('logout'); }}><LogOut size={17}/>{loggingOut ? 'Logging out…' : 'Log out'}</button></div>
-        </> : section === 'sound' ? <SoundSettings/> : <div className="settings-avatar-layout"><div className="settings-avatar-preview"><AvatarPreview avatar={avatar}/><strong>{username.trim()}</strong><div><button type="button" disabled={busy} onClick={randomize}><Shuffle size={16}/>Randomize</button><button type="button" disabled={busy} onClick={() => changeAvatar(defaultAvatar)}><RotateCcw size={16}/>Reset</button></div></div><AvatarPicker avatar={avatar} disabled={busy} onChange={changeAvatar}/></div>}
+        </> : section === 'sound' ? <SoundSettings/> : <div className="settings-avatar-layout"><div className="settings-avatar-preview"><AvatarPreview avatar={avatar}/><strong>{username.trim()}</strong><div><button type="button" disabled={busy} onClick={randomize}><Shuffle size={16}/>Randomize</button><button type="button" disabled={busy} onClick={() => changeAvatar(defaultAvatar)}><RotateCcw size={16}/>Reset</button></div></div><AvatarPicker avatar={avatar} disabled={busy} allowed={unlocked} onChange={changeAvatar}/></div>}
       </div>
       <footer className="settings-footer">
         <div aria-live="polite">{pendingExit ? <p>{pendingExit === 'logout' ? (dirty ? 'Log out and discard unsaved account changes?' : 'Log out of your account?') : 'Discard your unsaved account changes?'}</p> : error || logoutError ? <p className="settings-error" role="alert">{error || logoutError}</p> : message ? <p className="settings-success"><Check size={16}/>{message}</p> : <p>{dirty ? 'You have unsaved account changes.' : section === 'sound' ? 'These preferences apply to this device.' : 'All set. Make yourself at home.'}</p>}</div>

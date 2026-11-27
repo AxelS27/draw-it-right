@@ -14,6 +14,21 @@ const choices = {
 } as const;
 export type Avatar = { [K in keyof typeof choices]: typeof choices[K][number] };
 export const avatarOptions: { [K in keyof Avatar]: readonly Avatar[K][] } = choices;
+export const freeAvatarOptions: { [K in keyof Avatar]: readonly Avatar[K][] } = {
+  base: ['bean'],
+  color: ['mint'],
+  face: ['smile'],
+  accessory: ['none', 'antlers', 'beard', 'elf', 'scarf'],
+};
+export function unlockedAvatarOptions(owned: readonly string[] = []): { [K in keyof Avatar]: readonly Avatar[K][] } {
+  const ownedSet = new Set(owned);
+  return {
+    base: avatarOptions.base.filter(v => (freeAvatarOptions.base as readonly string[]).includes(v) || ownedSet.has(v)),
+    color: avatarOptions.color.filter(v => (freeAvatarOptions.color as readonly string[]).includes(v) || ownedSet.has(v)),
+    face: avatarOptions.face.filter(v => (freeAvatarOptions.face as readonly string[]).includes(v) || ownedSet.has(v)),
+    accessory: avatarOptions.accessory.filter(v => (freeAvatarOptions.accessory as readonly string[]).includes(v) || ownedSet.has(v)),
+  };
+}
 export type Profile = { username: string; avatar: Avatar };
 export const defaultAvatar: Avatar = { base: 'bean', color: 'mint', face: 'smile', accessory: 'none' };
 export const validUsername = (value: string) => /^[A-Za-z][A-Za-z0-9_]{2,15}$/.test(value);
