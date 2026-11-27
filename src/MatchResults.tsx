@@ -56,13 +56,15 @@ export function FinalPodium({ standings }: { standings: Standing[] }) {
   }, [podiumSize, instant]);
   useEffect(() => {
     if (!revealed) return;
-    const timer = window.setTimeout(() => gameAudio.play('champion'), 0);
-    return () => window.clearTimeout(timer);
+    const champ = window.setTimeout(() => gameAudio.play('champion'), 0);
+    const cheer = window.setTimeout(() => gameAudio.play('cheers'), 220);
+    return () => { window.clearTimeout(champ); window.clearTimeout(cheer); };
   }, [revealed]);
   return <div className={`match-celebration${cue === 'suspense' && !instant ? ' is-suspense' : ''}${revealed ? ' is-revealed' : ''}${instant ? ' is-instant' : ''}`} style={{ '--champion-delay': `${championDelay}s`, '--summary-delay': `${championDelay + 1.2}s` } as CSSProperties}>
     <div className="match-spotlight" aria-hidden="true"/>
-    <div className="match-confetti" aria-hidden="true">{Array.from({ length: 42 }, (_, index) => <i key={index} style={{ left: `${(index * 37) % 100}%`, backgroundColor: ['#ffdf91', '#91d7c5', '#edb4cf', '#b9c5ff'][index % 4], '--fall-delay': `${championDelay + (index % 7) * 0.09}s`, '--drift': `${((index * 23) % 180) - 90}px` } as CSSProperties}/>)}</div>
-    <div className="match-final-heading"><span>{revealed ? 'MEET YOUR CHAMPION' : 'THE FINAL REVEAL'}</span><h2 aria-live="polite">{revealed ? 'We have a champion!' : cue === 'suspense' ? 'One artist left…' : 'Every point led to this.'}</h2><div className="match-reveal-cue">{revealed ? 'A round of applause for our artists.' : cue === 'suspense' ? 'And the winner is…' : 'The podium awaits.'}</div><p className="match-final-summary">You finished #{ownRank + 1} with {standings[ownRank]?.total.toLocaleString()} points.</p></div>
+    <div className="match-champion-burst" aria-hidden="true"/>
+    <div className="match-confetti" aria-hidden="true">{Array.from({ length: 80 }, (_, index) => <i key={index} style={{ left: `${(index * 29) % 100}%`, backgroundColor: ['#ffdf91', '#91d7c5', '#edb4cf', '#b9c5ff', '#ff9f7f'][index % 5], '--fall-delay': `${championDelay + (index % 10) * 0.07}s`, '--drift': `${((index * 31) % 240) - 120}px` } as CSSProperties}/>)}</div>
+    <div className="match-final-heading"><span>{revealed ? '🏆 MEET YOUR CHAMPION' : 'THE FINAL REVEAL'}</span><h2 aria-live="polite">{revealed ? 'We have a champion!' : cue === 'suspense' ? '🥁 Drumroll please…' : 'Every point led to this.'}</h2><div className="match-reveal-cue">{revealed ? 'A huge round of applause for our artists!' : cue === 'suspense' ? 'Hold your breath… the #1 artist is…' : 'The podium awaits.'}</div><p className="match-final-summary">You finished #{ownRank + 1} with {standings[ownRank]?.total.toLocaleString()} points.</p></div>
     <div className="match-podium">{standings.slice(0, 3).map((row, index) => <article key={row.entrant.id} className={`match-podium-player podium-${index + 1}`} style={{ '--reveal-delay': `${index === 0 ? championDelay : 1 + (podiumSize - 1 - index) * 2}s` } as CSSProperties}>{index === 0 && <span className="match-champion-crown" aria-label="Champion"><Crown size={32}/></span>}<AvatarPreview avatar={row.entrant.profile.avatar}/><h3>{row.entrant.profile.username}{row.entrant.isYou && <small> · you</small>}</h3><strong>{row.total.toLocaleString()} pts</strong><div className={`place-${index + 1}`}>#{index + 1}</div></article>)}</div>
     <div className="match-final-summary">
       <div className="match-gallery-heading"><h3>Final standings</h3><span>Everyone made their mark.</span></div>

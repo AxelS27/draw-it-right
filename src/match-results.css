@@ -82,29 +82,46 @@
 .match-event-pill.is-selected { background: #ffdf91; border-color: #ffdf91; color: #58422e; }
 .match-event-wait { padding: 24px 16px; border-radius: 16px; background: #ffffff10; text-align: center; color: #d2e2e8; font-size: 14px; }
 .match-celebration { position: relative; isolation: isolate; padding-top: 24px; }
-.match-spotlight { position: absolute; inset: 0; z-index: -1; pointer-events: none; background: radial-gradient(ellipse at 50% 35%, #ffdf911c, transparent 65%); transition: background-color 1s ease, opacity 1s ease; border-radius: 18px; }
-.is-suspense .match-spotlight { background-color: #071923b8; }
+.match-spotlight { position: absolute; inset: 0; z-index: -1; pointer-events: none; background: radial-gradient(ellipse at 50% 35%, #ffdf9122, transparent 65%); transition: background-color 0.8s ease, opacity 0.8s ease; border-radius: 18px; }
+.is-suspense .match-spotlight { background-color: #05131dd4; animation: match-spotlight-pulse 0.7s ease-in-out infinite alternate; }
+.is-revealed .match-spotlight { background: radial-gradient(ellipse at 50% 38%, #ffdf9142, #ffdf9112 40%, transparent 72%); }
+.match-champion-burst { position: absolute; left: 50%; top: 44%; width: 220px; height: 220px; border-radius: 50%; pointer-events: none; z-index: -1; opacity: 0; transform: translate(-50%, -50%) scale(0.3); border: 4px solid #ffdf91cc; box-shadow: 0 0 60px #ffdf9199, inset 0 0 40px #ffdf9166; }
+.is-revealed:not(.is-instant) .match-champion-burst { animation: match-champion-shockwave 1.1s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 .match-reveal-cue { margin-top: 12px; color: #ffdf91; font-size: 13px; min-height: 20px; }
-.is-suspense .match-reveal-cue { animation: match-suspense-breathe 1.3s ease-in-out infinite; }
+.is-suspense .match-reveal-cue { animation: match-suspense-breathe 0.65s ease-in-out infinite; font-weight: 700; }
+.is-suspense .match-podium { animation: match-tension-shake 0.36s ease-in-out infinite; }
 .match-final-heading h2 { min-height: 1.3em; }
 .match-skip-reveal { display: block; margin: 18px auto 0; padding: 12px 20px; min-height: 44px; color: #d2e2e8; font-size: 12px; border: 1px solid #ffffff30; border-radius: 999px; background: #ffffff08; cursor: pointer; }
 .match-skip-reveal:hover { background: #ffffff18; }
 .match-skip-reveal:focus-visible { outline: 2px solid #ffdf91; outline-offset: 4px; }
-.match-podium-player:not(.podium-1) { transition: filter 0.8s ease; }
-.is-suspense .match-podium-player:not(.podium-1) { filter: brightness(0.45) saturate(0.5); }
-.match-celebration .podium-1 { animation-name: match-champion-reveal; animation-duration: 1.2s; }
-.is-instant .match-podium-player, .is-instant .podium-1 > div, .is-instant .match-final-summary { animation: none; }
-.is-instant .match-confetti { display: none; }
-@keyframes match-suspense-breathe { 50% { opacity: 0.5; transform: scale(0.97); } }
+.match-podium-player:not(.podium-1) { transition: filter 0.7s ease; }
+.is-suspense .match-podium-player:not(.podium-1) { filter: brightness(0.35) saturate(0.4); }
+.match-celebration .podium-1 { animation-name: match-champion-reveal; animation-duration: 1.35s; }
+.is-revealed:not(.is-instant) .match-champion-crown { animation: match-crown-drop 1.1s cubic-bezier(0.22, 1.4, 0.36, 1) forwards; }
+.is-instant .match-podium-player, .is-instant .podium-1 > div, .is-instant .match-final-summary, .is-instant .match-champion-crown { animation: none; }
+.is-instant .match-confetti, .is-instant .match-champion-burst { display: none; }
+@keyframes match-suspense-breathe { 50% { opacity: 0.45; transform: scale(1.04); } }
+@keyframes match-spotlight-pulse { from { opacity: 0.85; } to { opacity: 1; } }
+@keyframes match-tension-shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-2px); } 75% { transform: translateX(2px); } }
+@keyframes match-champion-shockwave {
+  0% { opacity: 0.95; transform: translate(-50%, -50%) scale(0.3); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(2.6); }
+}
+@keyframes match-crown-drop {
+  0% { opacity: 0; transform: translateY(-42px) scale(0.5) rotate(-18deg); }
+  65% { opacity: 1; transform: translateY(4px) scale(1.22) rotate(6deg); }
+  100% { opacity: 1; transform: translateY(0) scale(1) rotate(0deg); }
+}
 @keyframes match-champion-reveal {
-  from { opacity: 0; visibility: hidden; transform: translateY(85px) scale(0.65); }
-  55% { opacity: 1; visibility: visible; transform: translateY(-20px) scale(1.16); }
-  78% { transform: translateY(5px) scale(0.98); }
+  from { opacity: 0; visibility: hidden; transform: translateY(105px) scale(0.55); }
+  52% { opacity: 1; visibility: visible; transform: translateY(-26px) scale(1.2); }
+  76% { transform: translateY(6px) scale(0.97); }
   to { opacity: 1; visibility: visible; transform: translateY(0) scale(1); }
 }
 .match-confetti { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 2; }
-.match-confetti i { position: absolute; top: -18px; width: 8px; height: 14px; border-radius: 2px; animation: match-confetti-fall 2.8s ease-in var(--fall-delay) both; }
-.match-confetti i:nth-child(3n) { width: 10px; height: 10px; border-radius: 50%; }
+.match-confetti i { position: absolute; top: -18px; width: 9px; height: 15px; border-radius: 2px; animation: match-confetti-fall 3.1s ease-in var(--fall-delay) both; }
+.match-confetti i:nth-child(3n) { width: 11px; height: 11px; border-radius: 50%; }
+.match-confetti i:nth-child(5n) { width: 6px; height: 18px; }
 .match-final-heading { text-align: center; }
 .match-final-summary { animation: match-summary-reveal 0.6s ease-out var(--summary-delay) both; }
 .match-champion-crown { display: grid; place-items: center; color: #ffdf91; margin: 0 auto 8px; filter: drop-shadow(0 0 12px #ffdf9166); }
@@ -179,8 +196,8 @@
   .match-top-drawings > :first-child { grid-column: 1 / -1; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .match-progress svg, .match-podium-player, .podium-1 > div, .match-final-summary { animation: none; }
-  .match-confetti { display: none; }
-  .match-celebration .podium-1, .is-suspense .match-reveal-cue { animation: none; }
+  .match-progress svg, .match-podium-player, .podium-1 > div, .match-final-summary, .match-champion-crown { animation: none; }
+  .match-confetti, .match-champion-burst { display: none; }
+  .match-celebration .podium-1, .is-suspense .match-reveal-cue, .is-suspense .match-spotlight, .is-suspense .match-podium { animation: none; }
   .match-spotlight, .match-podium-player:not(.podium-1) { transition: none; }
 }
