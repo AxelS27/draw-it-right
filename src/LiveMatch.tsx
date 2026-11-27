@@ -205,6 +205,7 @@ export function LiveMatch({ code, uid, isHost = false, hostInLobby = false, room
       {state.phase === 'final' && (
         <div className="match-actions">
           <div className="match-action-buttons">
+            <button className={!roomClosed ? 'room-secondary' : 'room-primary'} data-sound="close" onClick={isHost ? onFinish : onLeave}>Leave room</button>
             {!roomClosed && (
               <button className="room-primary" disabled={rematching || (!isHost && !hostInLobby)} onClick={() => {
                 setRematching(true);
@@ -220,7 +221,6 @@ export function LiveMatch({ code, uid, isHost = false, hostInLobby = false, room
               const me = meIndex >= 0 ? ` | My rank: #${meIndex + 1} (${standings[meIndex]!.total.toLocaleString()} pts)` : '';
               void navigator.clipboard.writeText(`Draw It Right! Final Results: ${top}${me}`).then(() => { setShared(true); window.setTimeout(() => setShared(false), 2200); }).catch(() => undefined);
             }}><Share2 size={16}/>{shared ? 'Copied!' : 'Share Result'}</button>
-            <button className={!roomClosed ? 'room-secondary' : 'room-primary'} data-sound="close" onClick={isHost ? onFinish : onLeave}>Leave room</button>
           </div>
           <span>{roomClosed ? 'Match complete · room closed' : isHost ? 'Play again with the same crew or leave' : hostInLobby ? 'Host is in the room! Click Play Again to join.' : 'Waiting for host to join the room first…'}</span>
         </div>
