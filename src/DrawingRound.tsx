@@ -268,6 +268,6 @@ export function DrawingRound({ options, round, prompt, messages, onSend, onBack,
       <aside className="drawing-chat"><RoomChat messages={messages} onSend={onSend} live={Boolean(live)}/></aside>
     </div>
     <dialog ref={chatDialog} className="waiting-chat-dialog" aria-label="Preview room chat" onClose={onDialogClose}><RoomChat messages={messages} onSend={onSend} live={Boolean(live)} onClose={closeChat}/></dialog>
-    <dialog ref={leaveDialog} className="waiting-player-dialog drawing-clear" aria-labelledby="leave-drawing-title"><h2 id="leave-drawing-title">Leave this match?</h2><p>{live ? 'Your place stays in the match, but you will leave this room.' : 'Your drawings and preview scores will be discarded.'}</p><div><button className="room-secondary" onClick={() => leaveDialog.current?.close()}>Stay here</button><button className="room-primary" onClick={onBack}>{live ? 'Leave room' : 'Leave preview'}</button></div></dialog>
+    <dialog ref={leaveDialog} className="waiting-player-dialog drawing-clear" aria-labelledby="leave-drawing-title"><h2 id="leave-drawing-title">Leave this match?</h2><p>{live ? 'Your place stays in the match, but you will leave this room.' : 'Your drawings and preview scores will be discarded.'}</p><div><button className="room-secondary" onClick={() => leaveDialog.current?.close()}>Stay here</button><button className="room-secondary match-leave-button" onClick={onBack}>{live ? 'Leave room' : 'Leave preview'}</button></div></dialog>
   </main>;
 }

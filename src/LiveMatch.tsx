@@ -5,6 +5,7 @@ import { RoomChat, useUnreadChat, type ChatMessage } from './RoomChat';
 import { FinalPodium, RoundGallery, Standings } from './MatchResults';
 import { roomError, sendMessage, watchMessages, type LiveMessage, type RoomOptions } from './rooms';
 import { matchRequest, openMatchSocket, type AttackType, type MatchState, type RoundEvent } from './match-api';
+import type { Profile } from './profile';
 import type { Entrant, RoundResult, Standing } from './preview-match';
 import { useAudioScene } from './useAudio';
 import './match-results.css';
@@ -12,9 +13,9 @@ import './live-match.css';
 
 const loadingImage = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500"><rect width="800" height="500" fill="#fff"/><text x="400" y="250" text-anchor="middle" fill="#58777c" font-family="sans-serif" font-size="26">Loading drawing…</text></svg>');
 const blankImage = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500"><rect width="800" height="500" fill="#fff"/></svg>');
-type Props = { code: string; uid: string; isHost?: boolean; hostInLobby?: boolean; roomClosed: boolean; options: RoomOptions; onLeave: () => void; onFinish: () => void; onRematch: () => Promise<void> };
+type Props = { code: string; uid: string; isHost?: boolean; hostInLobby?: boolean; roomClosed: boolean; options: RoomOptions; activePlayers?: Record<string, Profile>; onLeave: () => void; onFinish: () => void; onRematch: () => Promise<void> };
 
-export function LiveMatch({ code, uid, isHost = false, hostInLobby = false, roomClosed, options, onLeave, onFinish, onRematch }: Props) {
+export function LiveMatch({ code, uid, isHost = false, hostInLobby = false, roomClosed, options, activePlayers, onLeave, onFinish, onRematch }: Props) {
   const [state, setState] = useState<MatchState | null>(null);
   const [now, setNow] = useState(Date.now());
   const [offset, setOffset] = useState(0);
@@ -23,7 +24,7 @@ export function LiveMatch({ code, uid, isHost = false, hostInLobby = false, room
   const [ownImages, setOwnImages] = useState<Record<string, string>>({});
   const [messages, setMessages] = useState<LiveMessage[]>([]);
   const [matchLogs, setMatchLogs] = useState<{ id: string; text: string; at: number }[]>([]);
-  const prevOrder = useRef<string[] | null>(null);
+  const prevActive = useRef<Record<string, Profile> | null>(null);
   const logSeq = useRef(0);
   const [chatError, setChatError] = useState('');
   const [rematching, setRematching] = useState(false);
@@ -36,20 +37,23 @@ export function LiveMatch({ code, uid, isHost = false, hostInLobby = false, room
 
   useEffect(() => watchMessages(code, setMessages, setChatError), [code]);
   useEffect(() => {
-    if (!state?.order) return;
-    if (!prevOrder.current) {
-      prevOrder.current = state.order;
+    if (!activePlayers) return;
+    if (!prevActive.current) {
+      prevActive.current = activePlayers;
       return;
     }
-    const prev = new Set(prevOrder.current);
+    const previous = prevActive.current;
     const additions: { id: string; text: string; at: number }[] = [];
     const ts = Date.now();
-    for (const id of state.order) {
-      if (!prev.has(id)) additions.push({ id: `match-join-${logSeq.current++}`, text: `${state.players[id]?.username ?? 'A player'} joined the match!`, at: ts });
+    for (const [id, player] of Object.entries(activePlayers)) {
+      if (!(id in previous)) additions.push({ id: `match-join-${logSeq.current++}`, text: `${player.username} joined the match!`, at: ts });
     }
-    prevOrder.current = state.order;
+    for (const [id, player] of Object.entries(previous)) {
+      if (!(id in activePlayers)) additions.push({ id: `match-leave-${logSeq.current++}`, text: `${player.username} left the match.`, at: ts });
+    }
+    prevActive.current = activePlayers;
     if (additions.length) setMatchLogs(current => [...current.slice(-30), ...additions]);
-  }, [state?.order, state?.players]);
+  }, [activePlayers]);
   useEffect(() => {
     if (state?.phase === 'results' || state?.phase === 'leaderboard') {
       let frame = 0;
@@ -248,6 +252,6 @@ export function LiveMatch({ code, uid, isHost = false, hostInLobby = false, room
       )}
     </section><aside className="drawing-chat"><RoomChat live messages={chatMessages} onSend={sendChat}/>{chatError && <p className="waiting-chat-error" role="alert">{chatError}</p>}</aside></div>
     <dialog ref={chatDialog} className="waiting-chat-dialog" aria-label="Room chat" onClose={onDialogClose}><RoomChat live messages={chatMessages} onSend={sendChat} onClose={closeChat}/>{chatError && <p className="waiting-chat-error" role="alert">{chatError}</p>}</dialog>
-    <dialog ref={leaveDialog} className="waiting-player-dialog drawing-clear" aria-labelledby="leave-live-title"><h2 id="leave-live-title">Leave this match?</h2><p>You will leave the room, but the match keeps going for the others.</p><div><button className="room-secondary" onClick={() => leaveDialog.current?.close()}>Stay here</button><button className="room-primary" onClick={onLeave}>Leave room</button></div></dialog>
+    <dialog ref={leaveDialog} className="waiting-player-dialog drawing-clear" aria-labelledby="leave-live-title"><h2 id="leave-live-title">Leave this match?</h2><p>You will leave the room, but the match keeps going for the others.</p><div><button className="room-secondary" onClick={() => leaveDialog.current?.close()}>Stay here</button><button className="room-secondary match-leave-button" onClick={onLeave}>Leave room</button></div></dialog>
   </main>;
 }
