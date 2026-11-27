@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Copy, Crown, Link, LockKeyhole, MessageCircle, QrCode, Settings2, UnlockKeyhole, Users, X } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { AvatarPreview } from './AvatarPreview';
@@ -14,7 +14,6 @@ type Props = { room: Room; uid: string; code: string; duration: string; busy: bo
 export function WaitingRoom({ room, uid, code, duration, busy, notice, onEdit, onCopy, onAction }: Props) {
   useAudioScene('waiting', 1);
   useEffect(() => { void matchRequest('/health').catch(() => undefined); }, []);
-  const grid = useRef<HTMLDivElement>(null);
   const playerDialog = useRef<HTMLDialogElement>(null);
   const qrDialog = useRef<HTMLDialogElement>(null);
   const chatDialog = useRef<HTMLDialogElement>(null);
@@ -22,7 +21,6 @@ export function WaitingRoom({ room, uid, code, duration, busy, notice, onEdit, o
   const [selected, setSelected] = useState<string | null>(null);
   const [messages, setMessages] = useState<LiveMessage[]>([]);
   const [chatError, setChatError] = useState('');
-  const [columns, setColumns] = useState(4);
   const players = Object.entries(room.players).sort(([a], [b]) => a === room.host ? -1 : b === room.host ? 1 : 0);
   const count = players.length;
   const isHost = uid === room.host;
@@ -39,24 +37,6 @@ export function WaitingRoom({ room, uid, code, duration, busy, notice, onEdit, o
   useEffect(() => watchMessages(code, setMessages, setChatError), [code]);
 
   useEffect(() => {
-    const element = grid.current;
-    if (!element) return;
-    const observer = new ResizeObserver(([entry]) => {
-      if (!entry || !entry.contentRect.width || !entry.contentRect.height) return;
-      const { width, height } = entry.contentRect;
-      let bestColumns = 1, bestScore = 0;
-      for (let candidate = 1; candidate <= Math.min(count, 10); candidate++) {
-        const rows = Math.ceil(count / candidate);
-        const score = Math.min((width - (candidate - 1) * 8) / candidate, (height - (rows - 1) * 8) / rows * 1.15);
-        if (score > bestScore) { bestScore = score; bestColumns = candidate; }
-      }
-      setColumns(bestColumns);
-    });
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, [count]);
-
-  useEffect(() => {
     if (selected && room.players[selected]) playerDialog.current?.showModal();
     else { playerDialog.current?.close(); if (selected) setSelected(null); }
   }, [selected, room.players]);
@@ -71,7 +51,7 @@ export function WaitingRoom({ room, uid, code, duration, busy, notice, onEdit, o
     <p className="waiting-preview-note">{room.status === 'started' ? 'Match started. Live drawing and scoring are not available yet.' : room.locked ? 'Room locked. New players cannot join.' : 'Share the code or invite link to bring friends in.'}</p>
     <div className="waiting-layout waiting-live-layout"><div className="waiting-player-column"><section className="waiting-crew" aria-labelledby="waiting-crew-title">
       <div className="waiting-crew-heading"><h2 id="waiting-crew-title"><Users size={18}/><span>{count}<small> / {room.options.capacity} players</small></span></h2>{isHost && room.status === 'waiting' && <button type="button" className="waiting-icon-button" disabled={busy} aria-label={room.locked ? 'Unlock room' : 'Lock room'} aria-pressed={room.locked} onClick={() => onAction('lock')}>{room.locked ? <LockKeyhole size={17}/> : <UnlockKeyhole size={17}/>}</button>}</div>
-      <div className="waiting-player-grid" ref={grid} style={{ '--columns': columns, '--rows': Math.ceil(count / columns) } as CSSProperties}>
+      <div className="waiting-player-grid">
         {players.map(([id, player]) => <button type="button" key={id} className={`waiting-player${id === room.host ? ' is-host' : ''}`} aria-label={`${player.username}${id === room.host ? ', host' : ''}${id === uid ? ', you' : ''}`} onClick={() => setSelected(id)}>{id === room.host && <Crown className="waiting-crown" size={13} aria-hidden="true"/>}<AvatarPreview avatar={player.avatar}/><span>{player.username}{id === uid && <small> · you</small>}</span></button>)}
       </div><div className="waiting-crew-footer"><span><Crown size={13}/>{isHost ? 'You’re the host' : `${room.players[room.host]?.username ?? 'Host'} is hosting`}</span><span>{room.status === 'waiting' ? 'Waiting for players' : 'Match started'}</span><button type="button" className="waiting-mobile-chat-button" onClick={openChat}><MessageCircle size={16}/>Chat{unread > 0 && <span className="chat-unread-badge" aria-label={`${unread} unread messages`}>{unread > 9 ? '9+' : unread}</span>}</button></div>
     </section>{room.options.reactions && room.status === 'waiting' && <RoomReactions code={code} uid={uid} players={room.players}/>}</div><aside className="waiting-chat-desktop waiting-live-sidebar"><div className="waiting-live-summary"><h2>Room settings</h2><p>{room.options.rounds} rounds · {duration} per round</p><p>{room.options.doublePoints ? 'Double-point finale planned' : 'Standard scoring planned'} · {room.options.reactions ? 'Reactions on' : 'Reactions off'}</p><p>{room.options.lateJoin ? 'Late join planned for gameplay' : 'No late joining'}</p></div><RoomChat live messages={chatMessages} onSend={send}/>{chatError && <p className="waiting-chat-error" role="alert">{chatError}</p>}</aside></div>

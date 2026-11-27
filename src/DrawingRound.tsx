@@ -181,11 +181,12 @@ export function DrawingRound({ options, round, prompt, messages, onSend, onBack,
     finally { setEventBusy(false); }
   }
 
+  const displayTimer = roundEvent === 'speed_blitz' ? Math.max(12, Math.round(options.timer / 2)) : round === options.rounds && options.rounds > 1 ? Math.round(options.timer * 1.5) : options.timer;
   return <main className="drawing-page">
     <header className="drawing-heading">
       <button className="waiting-icon-button" aria-label="Back to waiting room" onClick={() => leaveDialog.current?.showModal()}><ArrowLeft size={20}/></button>
       <div className="drawing-prompt"><span>ROUND {round} / {options.rounds}{!live && <b>PREVIEW</b>}{round === options.rounds && options.doublePoints && <b>2× POINTS</b>}{roundEvent && <b className="is-event">{EVENT_LABELS[roundEvent].badge}</b>}</span><h1>Draw <strong>a {prompt}</strong></h1></div>
-      <div className={`drawing-clock${!revealing && remaining <= 10 ? ' is-urgent' : ''}`} aria-label={revealing ? 'Get ready' : `${remaining} seconds remaining`}><Clock3 size={21}/><strong>{revealing ? `${options.timer}s` : `${remaining}s`}</strong></div>
+      <div className={`drawing-clock${!revealing && remaining <= 10 ? ' is-urgent' : ''}`} aria-label={revealing ? 'Get ready' : `${remaining} seconds remaining`}><Clock3 size={21}/><strong>{revealing ? `${displayTimer}s` : `${remaining}s`}</strong></div>
       <button className="drawing-chat-toggle waiting-icon-button" aria-label="Open room chat" onClick={openChat}><MessageCircle size={21}/>{unread > 0 && <span className="chat-unread-badge" aria-label={`${unread} unread messages`}>{unread > 9 ? '9+' : unread}</span>}</button>
     </header>
     {!live && <p className="drawing-preview-note">Local preview. Sample results, not real AI scores.</p>}
