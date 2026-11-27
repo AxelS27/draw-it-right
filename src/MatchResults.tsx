@@ -63,7 +63,16 @@ export function FinalPodium({ standings }: { standings: Standing[] }) {
   return <div className={`match-celebration${cue === 'suspense' && !instant ? ' is-suspense' : ''}${revealed ? ' is-revealed' : ''}${instant ? ' is-instant' : ''}`} style={{ '--champion-delay': `${championDelay}s`, '--summary-delay': `${championDelay + 1.2}s` } as CSSProperties}>
     <div className="match-spotlight" aria-hidden="true"/>
     <div className="match-champion-burst" aria-hidden="true"/>
-    <div className="match-confetti" aria-hidden="true">{Array.from({ length: 80 }, (_, index) => <i key={index} style={{ left: `${(index * 29) % 100}%`, backgroundColor: ['#ffdf91', '#91d7c5', '#edb4cf', '#b9c5ff', '#ff9f7f'][index % 5], '--fall-delay': `${championDelay + (index % 10) * 0.07}s`, '--drift': `${((index * 31) % 240) - 120}px` } as CSSProperties}/>)}</div>
+    <div className="match-confetti" aria-hidden="true">{Array.from({ length: 80 }, (_, index) => {
+      const left = 1 + confettiSeed(index, 1) * 98;
+      const delay = championDelay + confettiSeed(index, 2) * 1.4;
+      const dur = 2.2 + confettiSeed(index, 3) * 2.0;
+      const drift = (confettiSeed(index, 4) - 0.5) * 320;
+      const spin = (confettiSeed(index, 5) > 0.5 ? 1 : -1) * (360 + Math.round(confettiSeed(index, 6) * 540));
+      const w = 6 + Math.round(confettiSeed(index, 7) * 6);
+      const h = 8 + Math.round(confettiSeed(index, 8) * 10);
+      return <i key={index} style={{ left: `${left.toFixed(2)}%`, width: `${w}px`, height: `${h}px`, backgroundColor: ['#ffdf91', '#91d7c5', '#edb4cf', '#b9c5ff', '#ff9f7f'][index % 5], '--fall-delay': `${delay.toFixed(2)}s`, '--fall-dur': `${dur.toFixed(2)}s`, '--drift': `${drift.toFixed(0)}px`, '--spin': `${spin}deg` } as CSSProperties}/>;
+    })}</div>
     <div className="match-final-heading"><span>{revealed ? '🏆 MEET YOUR CHAMPION' : 'THE FINAL REVEAL'}</span><h2 aria-live="polite">{revealed ? 'We have a champion!' : cue === 'suspense' ? '🥁 Drumroll please…' : 'Every point led to this.'}</h2><div className="match-reveal-cue">{revealed ? 'A huge round of applause for our artists!' : cue === 'suspense' ? 'Hold your breath… the #1 artist is…' : 'The podium awaits.'}</div><p className="match-final-summary">You finished #{ownRank + 1} with {standings[ownRank]?.total.toLocaleString()} points.</p></div>
     <div className="match-podium">{standings.slice(0, 3).map((row, index) => <article key={row.entrant.id} className={`match-podium-player podium-${index + 1}`} style={{ '--reveal-delay': `${index === 0 ? championDelay : 1 + (podiumSize - 1 - index) * 2}s` } as CSSProperties}>{index === 0 && <span className="match-champion-crown" aria-label="Champion"><Crown size={32}/></span>}<AvatarPreview avatar={row.entrant.profile.avatar}/><h3>{row.entrant.profile.username}{row.entrant.isYou && <small> · you</small>}</h3><strong>{row.total.toLocaleString()} pts</strong><div className={`place-${index + 1}`}>#{index + 1}</div></article>)}</div>
     <div className="match-final-summary">
