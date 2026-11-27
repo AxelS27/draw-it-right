@@ -176,9 +176,11 @@ button:disabled { cursor: wait; opacity: .65; transform: none; }
 }
 .how-to-play-link { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; padding: 8px 14px; border-radius: 999px; background: #ffffff12; border: 1px solid #ffffff26; color: #e2ecef; font-size: 12px; font-weight: 600; }
 .how-to-play-link:hover { background: #ffffff22; }
-.howto-steps { margin: 18px 0 22px; padding-left: 20px; text-align: left; display: grid; gap: 12px; font-size: 13px; color: #315b66; }
-.howto-steps li strong { display: block; font-weight: 700; margin-bottom: 2px; }
-.howto-steps li span { color: #6a8589; font-size: 12px; line-height: 1.5; }
+.howto-steps { margin: 18px 0 22px; padding: 0; list-style: none; counter-reset: step; text-align: left; display: grid; gap: 10px; font-size: 13px; color: #315b66; }
+.howto-steps li { counter-increment: step; position: relative; padding: 12px 14px 12px 46px; border-radius: 14px; background: #f3f8f5; border: 1px solid #dceae2; }
+.howto-steps li::before { content: counter(step); position: absolute; left: 13px; top: 13px; width: 24px; height: 24px; border-radius: 8px; display: grid; place-items: center; background: #ffd479; color: #58422e; font-size: 12px; font-weight: 700; }
+.howto-steps li strong { display: block; font-weight: 700; letter-spacing: normal; color: #284f59; margin-bottom: 4px; }
+.howto-steps li span { display: block; color: #5d7a7f; font-size: 12px; line-height: 1.5; }
 .howto-done { width: 100%; justify-content: center; }
 @media (max-width: 440px) {
   .join-main { padding-top: 44px; }
