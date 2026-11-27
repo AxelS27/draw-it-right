@@ -58,8 +58,8 @@ function RoomForm({ initial, editing, busy, onSubmit, onCancel }: { initial: Roo
   </form>;
 }
 
-type Props = { path: string; profile: Profile | null; signedIn: boolean; ready: boolean; onLogin: () => void };
-export function RoomPages({ path, profile, signedIn, ready, onLogin }: Props) {
+type Props = { path: string; profile: Profile | null; signedIn: boolean; ready: boolean; onLogin: () => void; onMatchActive?: (active: boolean) => void };
+export function RoomPages({ path, profile, signedIn, ready, onLogin, onMatchActive }: Props) {
   const code = /^\/room\/(\d{6})$/.exec(path)?.[1];
   const isNew = path === '/room/new';
   const uid = auth.currentUser?.uid;
@@ -165,6 +165,12 @@ export function RoomPages({ path, profile, signedIn, ready, onLogin }: Props) {
     </div>
   );
   const back = <button className="room-back" type="button" onClick={() => navigate('/')}><ArrowLeft size={17}/>Back to lobby</button>;
+  const inLiveMatch = Boolean(code && uid && profile && room && (((room.status === 'started' || (room.status === 'waiting' && stayOnFinal)) && room.players[uid]) || (room.status === 'closed' && startedRoom?.players[uid])));
+  useEffect(() => {
+    onMatchActive?.(inLiveMatch);
+    return () => onMatchActive?.(false);
+  }, [inLiveMatch, onMatchActive]);
+
   if (!ready || !signedIn || !profile || !uid) return <main className="room-page">{back}<section className="room-card room-empty"><h1>{!ready ? 'Just a moment…' : !signedIn ? 'Your party starts here' : 'Finish your player profile'}</h1><p>{!ready ? 'Checking your account.' : !signedIn ? 'Log in to join or create a room.' : 'Choose your name and avatar to continue.'}</p>{ready && !signedIn && <button type="button" className="room-primary" onClick={onLogin}>Log in to continue<ArrowRight size={18}/></button>}</section></main>;
   if (isNew || (editing && room && code)) return <main className="room-page room-creator"><div className="room-topline">{back}</div><div className="room-creator-layout"><RoomForm key={isNew ? 'new' : 'edit'} initial={isNew ? defaultRoomOptions : room!.options} editing={!isNew} busy={busy} onSubmit={saveRoom} onCancel={() => isNew ? navigate('/') : setEditing(false)}/></div><p className="room-notice" role="alert">{notice}</p>{returnToRoom}</main>;
   if (code && loading) return <main className="room-page">{back}<section className="room-card room-empty"><h1>Finding your room…</h1></section></main>;

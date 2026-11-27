@@ -20,6 +20,7 @@ button:disabled { cursor: wait; opacity: .65; transform: none; }
 .shop-link { color: #ffe1a0; background: #ffda8410; border: 1px solid #ffda8438; }
 .shop-link:hover { background: #ffda8424; border-color: #ffda8470; }
 .shop-link:focus-visible { outline: 2px solid #ffda84; outline-offset: 3px; }
+.shop-link:disabled { opacity: .42; cursor: not-allowed; transform: none; }
 .coin-balance { color: #ffe1a0; background: transparent; border: 0; cursor: default; user-select: none; }
 .header { position: relative; z-index: 20; }
 .join-main.is-hydrating { visibility: hidden; }
