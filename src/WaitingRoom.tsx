@@ -3,7 +3,7 @@ import { ArrowLeft, Copy, Crown, Link, LockKeyhole, MessageCircle, QrCode, Setti
 import { QRCodeSVG } from 'qrcode.react';
 import { AvatarPreview } from './AvatarPreview';
 import { roomError, sendMessage, watchMessages, type LiveMessage, type Room, type RoomOptions } from './rooms';
-import { RoomChat, type ChatMessage } from './RoomChat';
+import { RoomChat, useUnreadChat, type ChatMessage } from './RoomChat';
 import { RoomReactions } from './RoomReactions';
 import { nextHost } from './room-order';
 import { useAudioScene } from './useAudio';
@@ -32,6 +32,7 @@ export function WaitingRoom({ room, uid, code, duration, busy, notice, onEdit, o
     catch (error) { throw new Error(roomError(error)); }
   }
   const chatMessages: ChatMessage[] = messages.map(message => ({ id: message.id, author: room.players[message.sender]?.username ?? 'Former player', text: message.text, isYou: message.sender === uid }));
+  const { unread, openChat, closeChat, onDialogClose } = useUnreadChat(chatMessages, chatDialog);
 
   useEffect(() => watchMessages(code, setMessages, setChatError), [code]);
 
@@ -70,11 +71,11 @@ export function WaitingRoom({ room, uid, code, duration, busy, notice, onEdit, o
       <div className="waiting-crew-heading"><h2 id="waiting-crew-title"><Users size={18}/><span>{count}<small> / {room.options.capacity} players</small></span></h2>{isHost && room.status === 'waiting' && <button type="button" className="waiting-icon-button" disabled={busy} aria-label={room.locked ? 'Unlock room' : 'Lock room'} aria-pressed={room.locked} onClick={() => onAction('lock')}>{room.locked ? <LockKeyhole size={17}/> : <UnlockKeyhole size={17}/>}</button>}</div>
       <div className="waiting-player-grid" ref={grid} style={{ '--columns': columns, '--rows': Math.ceil(count / columns) } as CSSProperties}>
         {players.map(([id, player]) => <button type="button" key={id} className={`waiting-player${id === room.host ? ' is-host' : ''}`} aria-label={`${player.username}${id === room.host ? ', host' : ''}${id === uid ? ', you' : ''}`} onClick={() => setSelected(id)}>{id === room.host && <Crown className="waiting-crown" size={13} aria-hidden="true"/>}<AvatarPreview avatar={player.avatar}/><span>{player.username}{id === uid && <small> · you</small>}</span></button>)}
-      </div><div className="waiting-crew-footer"><span><Crown size={13}/>{isHost ? 'You’re the host' : `${room.players[room.host]?.username ?? 'Host'} is hosting`}</span><span>{room.status === 'waiting' ? 'Waiting for players' : 'Match started'}</span><button type="button" className="waiting-mobile-chat-button" onClick={() => chatDialog.current?.showModal()}><MessageCircle size={16}/>Chat</button></div>
+      </div><div className="waiting-crew-footer"><span><Crown size={13}/>{isHost ? 'You’re the host' : `${room.players[room.host]?.username ?? 'Host'} is hosting`}</span><span>{room.status === 'waiting' ? 'Waiting for players' : 'Match started'}</span><button type="button" className="waiting-mobile-chat-button" onClick={openChat}><MessageCircle size={16}/>Chat{unread > 0 && <span className="chat-unread-badge" aria-label={`${unread} unread messages`}>{unread > 9 ? '9+' : unread}</span>}</button></div>
     </section>{room.options.reactions && room.status === 'waiting' && <RoomReactions code={code} uid={uid} players={room.players}/>}</div><aside className="waiting-chat-desktop waiting-live-sidebar"><div className="waiting-live-summary"><h2>Room settings</h2><p>{room.options.rounds} rounds · {duration} per round</p><p>{room.options.doublePoints ? 'Double-point finale planned' : 'Standard scoring planned'} · {room.options.reactions ? 'Reactions on' : 'Reactions off'}</p><p>{room.options.lateJoin ? 'Late join planned for gameplay' : 'No late joining'}</p></div><RoomChat live messages={chatMessages} onSend={send}/>{chatError && <p className="waiting-chat-error" role="alert">{chatError}</p>}</aside></div>
     <div className="waiting-bottom"><div className="waiting-start"><button className="room-secondary" type="button" disabled={busy} onClick={leave}>Leave room</button>{isHost && <button className="waiting-end-room" type="button" disabled={busy} onClick={() => { if (window.confirm('End this room for everyone?')) onAction('close'); }}>End room</button>}{isHost && room.status === 'waiting' && <button type="button" className="waiting-settings" onClick={onEdit}><Settings2 size={18}/>Edit settings</button>}</div>{isHost && room.status === 'waiting' && <div className="waiting-start"><span>{count < 2 ? 'Need at least 2 players' : 'Everyone ready?'}</span><button className="room-primary" type="button" disabled={busy || count < 2} onClick={() => onAction('start')}>Start game</button></div>}</div>
     <div className="waiting-toast" role="alert">{notice}</div>
-    <dialog ref={chatDialog} className="waiting-chat-dialog" aria-label="Room chat"><RoomChat live messages={chatMessages} onSend={send} onClose={() => chatDialog.current?.close()}/>{chatError && <p className="waiting-chat-error" role="alert">{chatError}</p>}</dialog>
+    <dialog ref={chatDialog} className="waiting-chat-dialog" aria-label="Room chat" onClose={onDialogClose}><RoomChat live messages={chatMessages} onSend={send} onClose={closeChat}/>{chatError && <p className="waiting-chat-error" role="alert">{chatError}</p>}</dialog>
     <dialog ref={qrDialog} className="waiting-qr-dialog" aria-labelledby="waiting-qr-title" aria-describedby="waiting-qr-description" onClose={() => qrButton.current?.focus()} onClick={event => { if (event.target === event.currentTarget) closeQr(); }}>
       <button type="button" className="waiting-qr-close" aria-label="Close QR code" onClick={closeQr}><X size={22}/></button>
       <span className="waiting-qr-eyebrow">DRAW IT RIGHT!</span>

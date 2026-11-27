@@ -1,6 +1,6 @@
 import type { Player } from './engine';
 
-export type RoomInfo = { host: string; status: string; players: Record<string, Player>; joinOrder: string[]; options: { rounds: number; timer: number; doublePoints: boolean } };
+export type RoomInfo = { host: string; status: string; players: Record<string, Player>; joinOrder: string[]; options: { rounds: number; timer: number; doublePoints: boolean; lateJoin?: boolean } };
 export type FirestoreDocument = { name: string; updateTime: string; fields: Record<string, { mapValue?: { fields?: Record<string, unknown> }; arrayValue?: { values?: unknown[] } }> };
 function field(value: unknown): unknown {
   if (!value || typeof value !== 'object') return undefined;

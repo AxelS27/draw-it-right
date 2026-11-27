@@ -5,7 +5,7 @@ import { parseProfile, profileRef, type Profile } from './profile';
 import { nextHost, remainingJoinOrder } from './room-order';
 
 export type RoomOptions = { name: string; rounds: number; timer: number; capacity: number; doublePoints: boolean; reactions: boolean; lateJoin: boolean };
-export const defaultRoomOptions: RoomOptions = { name: '', rounds: 7, timer: 30, capacity: 20, doublePoints: true, reactions: true, lateJoin: false };
+export const defaultRoomOptions: RoomOptions = { name: '', rounds: 7, timer: 30, capacity: 20, doublePoints: true, reactions: true, lateJoin: true };
 export type Room = { host: string; status: 'waiting' | 'started' | 'closed'; locked: boolean; options: RoomOptions; players: Record<string, Profile>; banned: string[]; joinOrder: string[] };
 const roomRef = (code: string) => doc(getFirestore(auth.app), 'rooms', code);
 const membershipRef = (uid: string) => doc(getFirestore(auth.app), 'roomMemberships', uid);
@@ -86,7 +86,7 @@ export async function joinRoom(code: string, uid: string): Promise<void> {
     if (room.banned.includes(uid)) throw new Error('You were removed from this room.');
     if (room.players[uid]) return;
     await availableMembership(uid, transaction);
-    if (room.status !== 'waiting') throw new Error('This match has already started.');
+    if (room.status !== 'waiting' && !(room.status === 'started' && room.options.lateJoin)) throw new Error('This match has already started.');
     if (room.locked) throw new Error('This room is locked. Ask the host to unlock it.');
     if (Object.keys(room.players).length >= room.options.capacity) throw new Error('This room is full.');
     const profile = await currentProfile(uid, transaction);

@@ -76,7 +76,7 @@ service cloud.firestore {
       allow update: if signedIn() && resource.data.status in ['waiting', 'started']
         && roomFields(request.resource.data)
         && (
-          (resource.data.status == 'waiting'
+          ((resource.data.status == 'waiting' || (resource.data.status == 'started' && resource.data.options.lateJoin == true))
             && request.resource.data.host == resource.data.host
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['players', 'joinOrder'])
             && request.resource.data.players.diff(resource.data.players).affectedKeys().hasOnly([request.auth.uid])

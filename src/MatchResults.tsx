@@ -9,7 +9,7 @@ function DrawingCard({ drawing, rank, winner = false }: { drawing: RoundDrawing;
   return <article className={`result-drawing${winner ? ' is-winner' : ''}${drawing.entrant.isYou ? ' is-you' : ''}`}>
     <div className="result-drawing-image"><img src={drawing.image} alt={`${drawing.entrant.profile.username}'s drawing`} loading={winner ? 'eager' : 'lazy'}/><span className={`result-place place-${rank}`}>#{rank}</span></div>
     <div className="result-drawing-caption"><span title={drawing.entrant.profile.username}>{drawing.entrant.profile.username}{drawing.entrant.isYou && <small> · you</small>}</span><strong>{drawing.points.toLocaleString()}<small> pts</small></strong></div>
-    {drawing.prediction && <div className="result-ai-prediction">AI guessed: {drawing.prediction}{drawing.confidence !== undefined ? ` · ${Math.round(drawing.confidence * 100)}% model confidence` : ''}</div>}
+    {drawing.prediction && <div className="result-ai-prediction">{drawing.prediction}{drawing.confidence !== undefined ? ` · ${Math.round(drawing.confidence * 100)}%` : ''}</div>}
   </article>;
 }
 
@@ -18,7 +18,7 @@ export function RoundGallery({ result }: { result: RoundResult }) {
   const own = result.drawings[ownIndex];
   return <>
     <div className="match-section-heading"><div><span>ROUND {result.round} · {result.prompt.toUpperCase()}</span><h2>This round’s stars</h2></div>{own && <div className="match-your-score">You placed <strong>#{ownIndex + 1}</strong><span>+{own.points.toLocaleString()} pts{result.multiplier === 2 ? ' · 2× round' : ''}</span></div>}</div>
-    {own?.prediction && <p className="match-own-prediction">Your drawing: AI guessed <strong>{own.prediction}</strong> ({Math.round((own.confidence ?? 0) * 100)}% model confidence), +{own.points.toLocaleString()} points.</p>}
+    {own?.prediction && <p className="match-own-prediction">Your drawing: <strong>{own.prediction}</strong> · {Math.round((own.confidence ?? 0) * 100)}%</p>}
     <div className="match-top-drawings">{result.drawings.slice(0, 3).map((drawing, index) => <DrawingCard key={drawing.entrant.id} drawing={drawing} rank={index + 1} winner/>)}</div>
     {result.drawings.length > 3 && <>
       <div className="match-gallery-heading"><h3>More masterpieces</h3><span>Highest to lowest score · {result.drawings.length - 3} drawings</span></div>
@@ -37,8 +37,7 @@ export function FinalPodium({ standings }: { standings: Standing[] }) {
   const championDelay = podiumSize > 1 ? 3 + (podiumSize - 1) * 2 : 3;
   const reducedMotion = useReducedMotion();
   const [cue, setCue] = useState<'intro' | 'suspense' | 'winner'>('intro');
-  const [skipped, setSkipped] = useState(false);
-  const instant = reducedMotion || skipped;
+  const instant = reducedMotion;
   const revealed = instant || cue === 'winner';
   useEffect(() => {
     if (instant) return;
@@ -65,7 +64,6 @@ export function FinalPodium({ standings }: { standings: Standing[] }) {
     <div className="match-confetti" aria-hidden="true">{Array.from({ length: 42 }, (_, index) => <i key={index} style={{ left: `${(index * 37) % 100}%`, backgroundColor: ['#ffdf91', '#91d7c5', '#edb4cf', '#b9c5ff'][index % 4], '--fall-delay': `${championDelay + (index % 7) * 0.09}s`, '--drift': `${((index * 23) % 180) - 90}px` } as CSSProperties}/>)}</div>
     <div className="match-final-heading"><span>{revealed ? 'MEET YOUR CHAMPION' : 'THE FINAL REVEAL'}</span><h2 aria-live="polite">{revealed ? 'We have a champion!' : cue === 'suspense' ? 'One artist left…' : 'Every point led to this.'}</h2><div className="match-reveal-cue">{revealed ? 'A round of applause for our artists.' : cue === 'suspense' ? 'And the winner is…' : 'The podium awaits.'}</div><p className="match-final-summary">You finished #{ownRank + 1} with {standings[ownRank]?.total.toLocaleString()} points.</p></div>
     <div className="match-podium">{standings.slice(0, 3).map((row, index) => <article key={row.entrant.id} className={`match-podium-player podium-${index + 1}`} style={{ '--reveal-delay': `${index === 0 ? championDelay : 1 + (podiumSize - 1 - index) * 2}s` } as CSSProperties}>{index === 0 && <span className="match-champion-crown" aria-label="Champion"><Crown size={32}/></span>}<AvatarPreview avatar={row.entrant.profile.avatar}/><h3>{row.entrant.profile.username}{row.entrant.isYou && <small> · you</small>}</h3><strong>{row.total.toLocaleString()} pts</strong><div className={`place-${index + 1}`}>#{index + 1}</div></article>)}</div>
-    {!revealed && <button type="button" className="match-skip-reveal" onClick={() => setSkipped(true)}>Skip reveal</button>}
     <div className="match-final-summary">
       <div className="match-gallery-heading"><h3>Final standings</h3><span>Everyone made their mark.</span></div>
       <Standings standings={standings} final/>

@@ -1,13 +1,16 @@
-.waiting-mobile-chat-button { display: none; }
+.waiting-mobile-chat-button { display: none; position: relative; }
+.drawing-chat-toggle { position: relative; }
+.chat-unread-badge { position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: #ff5a5f; color: #fff; font-size: 10px; font-weight: 700; line-height: 18px; text-align: center; box-shadow: 0 2px 6px #102b4655; pointer-events: none; }
+.waiting-mobile-chat-button .chat-unread-badge { position: static; margin-left: 2px; }
 .waiting-chat-desktop { min-height: 0; min-width: 0; }
 .waiting-chat-panel { display: flex; flex-direction: column; height: 100%; min-height: 0; background: #fffcf6; color: #294f61; border: 1px solid #fff; border-radius: 20px; overflow: hidden; }
 .waiting-chat-heading { display: flex; justify-content: space-between; align-items: center; padding: 18px 16px 14px; border-bottom: 1px solid #e3e8dc; flex-shrink: 0; }
 .waiting-chat-heading h2 { display: flex; align-items: center; gap: 8px; font-family: 'Fredoka', sans-serif; font-size: 20px; font-weight: 500; }
 .waiting-chat-heading p { font-size: 10px; line-height: 1.5; color: #71857e; margin-top: 5px; }
-.waiting-chat-log { overflow-y: auto; overflow-wrap: anywhere; overscroll-behavior: contain; flex: 1; min-height: 0; padding: 16px; }
+.waiting-chat-log { display: flex; flex-direction: column; overflow-y: auto; overflow-wrap: anywhere; overscroll-behavior: contain; flex: 1; min-height: 0; padding: 16px; }
 .waiting-chat-empty { color: #71857e; font-size: 12px; line-height: 1.6; text-align: center; padding: 20px 4px; }
-.waiting-message { background: #e6efdf; border-radius: 12px 12px 3px 12px; padding: 11px 12px; margin: 0 0 12px 15px; }
-.waiting-message.is-sample { background: #f0eee5; border-radius: 12px 12px 12px 3px; margin-left: 0; margin-right: 15px; }
+.waiting-message { max-width: 85%; background: #f0eee5; border-radius: 12px 12px 12px 3px; padding: 11px 12px; margin: 0 0 12px; align-self: flex-start; }
+.waiting-message.is-mine { background: #e6efdf; border-radius: 12px 12px 3px 12px; align-self: flex-end; }
 .waiting-message > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; font-size: 10px; }
 .waiting-message > div > span { color: #74877c; font-size: 9px; }
 .waiting-message p { margin-top: 6px; font-size: 12px; line-height: 1.6; white-space: pre-wrap; }

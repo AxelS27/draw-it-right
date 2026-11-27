@@ -2,10 +2,10 @@
 .game-world:has(.drawing-page) > footer { display: none; }
 .drawing-page { display: flex; flex: 1; flex-direction: column; min-height: 0; width: min(1560px, 100%); margin: 0 auto; padding: 14px 28px 20px; gap: 10px; }
 .drawing-heading { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
-.drawing-prompt { flex: 1; }
-.drawing-prompt > span { display: flex; align-items: center; gap: 9px; color: #d2e2e8; font-size: 10px; letter-spacing: 1px; }
+.drawing-prompt { flex: 1; min-width: 0; }
+.drawing-prompt > span { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; color: #d2e2e8; font-size: 10px; letter-spacing: 1px; }
 .drawing-prompt b { padding: 3px 5px; border-radius: 4px; background: #ffdc8730; color: #ffe2a5; font-size: 8px; }
-.drawing-prompt h1 { font-family: 'Fredoka', sans-serif; font-size: 29px; font-weight: 400; }
+.drawing-prompt h1 { font-family: 'Fredoka', sans-serif; font-size: 29px; font-weight: 400; overflow-wrap: anywhere; }
 .drawing-prompt h1 strong { color: #ffe2a5; font-weight: 500; }
 .drawing-clock { display: flex; align-items: center; justify-content: center; gap: 10px; min-width: 108px; padding: 12px 18px; border: 1px solid #e8d398; border-radius: 16px; background: #fff1cf; color: #705329; }
 .drawing-clock strong { font-family: 'Fredoka', sans-serif; font-size: 26px; font-weight: 500; font-variant-numeric: tabular-nums; }
@@ -38,6 +38,41 @@
 .drawing-countdown { display: grid; place-items: center; width: 80px; height: 80px; margin: 22px 0 16px; border-radius: 24px; background: #ffdf91; font-family: 'Fredoka', sans-serif; font-size: 48px; font-weight: 500; animation: drawing-count-in .25s ease-out; }
 .drawing-clear > div { display: flex; justify-content: center; gap: 8px; }
 .drawing-clear > div > button { min-width: 0; padding: 10px 14px; }
+.drawing-live-bar { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; min-height: 30px; }
+.drawing-live-ai { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 999px; background: #ffffff18; color: #eef7f6; font-size: 13px; }
+.drawing-live-ai.is-match { background: #36c98e2e; color: #aef5d4; }
+.drawing-curse-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 999px; background: #ff5a5f33; border: 1px solid #ff8b8f66; color: #ffd4d6; font-size: 12px; font-weight: 700; }
+.drawing-reveal-event { margin-top: 8px; padding: 10px 16px; border-radius: 14px; background: #ffdf91; color: #58422e; font-size: 14px; }
+.drawing-reveal-event strong { display: block; font-size: 15px; }
+.drawing-reveal-event span { display: block; font-size: 12px; margin-top: 2px; }
+.drawing-reveal-curse { margin-top: 10px; padding: 8px 14px; border-radius: 12px; background: #ffe0d9; color: #9e332d; font-size: 13px; font-weight: 600; }
+.drawing-paper.is-flipped canvas { transform: rotate(180deg); outline: 4px solid #ff5a5f; box-shadow: 0 0 24px #ff5a5f80; }
+.drawing-paper.is-mirrored canvas { outline: 4px solid #70a1ff; box-shadow: 0 0 24px #70a1ff80; }
+.drawing-paper.is-ghost canvas { outline: 4px solid #c59bff; box-shadow: 0 0 24px #c59bff80; }
+.drawing-paper.is-shaking canvas { animation: drawing-quake 0.11s infinite alternate ease-in-out; outline: 4px solid #ff9f43; box-shadow: 0 0 24px #ff9f4380; }
+@keyframes drawing-quake {
+  0% { transform: translate(-14px, 8px) rotate(-2.2deg); }
+  50% { transform: translate(10px, -10px) rotate(1.8deg); }
+  100% { transform: translate(14px, 6px) rotate(2.2deg); }
+}
+.drawing-event-overlay { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 18px; border-radius: inherit; background: #102b46eb; backdrop-filter: blur(6px); color: #fff9ef; overflow-y: auto; }
+.drawing-event-head { text-align: center; }
+.drawing-event-head span { display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: 2px; color: #ffdf91; }
+.drawing-event-head h3 { font-family: 'Fredoka', sans-serif; font-size: clamp(20px, 3vw, 28px); font-weight: 500; margin-top: 4px; }
+.drawing-event-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; width: min(620px, 100%); }
+.drawing-event-card { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 110px; padding: 14px 10px; border-radius: 16px; background: linear-gradient(160deg, #27536e, #183a50); border: 2px solid #ffdf9166; color: #fff9ef; text-align: center; box-shadow: 0 8px 24px #08182660; }
+.drawing-event-card:hover:not(:disabled) { border-color: #ffdf91; background: linear-gradient(160deg, #326888, #1d4660); }
+.drawing-event-card.is-selected { border-color: #ffdf91; background: #ffdf91; color: #58422e; }
+.drawing-event-card strong { font-family: 'Fredoka', sans-serif; font-size: 15px; font-weight: 500; }
+.drawing-event-card span { font-size: 11px; line-height: 1.4; opacity: .9; }
+.drawing-event-targets { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; max-width: 620px; }
+.drawing-event-targets > span { font-size: 12px; font-weight: 700; color: #ffdf91; }
+.drawing-event-target { min-height: 44px; padding: 8px 14px; border-radius: 12px; background: #ffdf91; color: #58422e; font-size: 13px; font-weight: 700; }
+.drawing-event-skip { min-height: 44px; padding: 8px 18px; border-radius: 999px; background: #ffffff18; color: #d2e2e8; font-size: 12px; font-weight: 600; }
+.drawing-center-banner { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 3; max-width: calc(100% - 32px); padding: 14px 22px; border-radius: 16px; background: #102b46eb; border: 2px solid #ffdf91; color: #fff9ef; text-align: center; font-family: 'Fredoka', sans-serif; font-size: clamp(16px, 2.5vw, 22px); box-shadow: 0 12px 36px #08182680; pointer-events: none; animation: drawing-count-in .25s ease-out; }
+.drawing-center-banner.is-sabotage, .drawing-center-banner.is-victim { border-color: #ff6b6b; background: #4a151beb; color: #ffe3e3; }
+.drawing-center-banner.is-victim { font-size: clamp(18px, 3vw, 26px); }
+@media (max-width: 600px) { .drawing-event-cards { grid-template-columns: minmax(0, 1fr); } .drawing-event-card { min-height: 64px; padding: 10px 12px; } }
 @keyframes drawing-count-in { from { transform: scale(.85); opacity: .5; } to { transform: scale(1); opacity: 1; } }
 @media (max-width: 1100px) { .drawing-layout { grid-template-columns: minmax(0, 1fr) 260px; gap: 12px; } }
 @media (max-width: 900px), (max-height: 520px) {
@@ -46,21 +81,28 @@
   .drawing-heading .drawing-chat-toggle { display: inline-grid; }
 }
 @media (max-width: 600px) {
-  .drawing-page { padding: 8px 12px 12px; gap: 7px; }
+  .drawing-page { padding: 8px 10px 10px; gap: 6px; }
   .drawing-heading { gap: 8px; }
-  .drawing-prompt h1 { font-size: 23px; }
+  .drawing-prompt h1 { font-size: clamp(19px, 5.5vw, 23px); }
   .drawing-prompt > span { font-size: 8px; gap: 5px; }
-  .drawing-clock { min-width: 76px; padding: 8px 10px; gap: 6px; }
-  .drawing-clock strong { font-size: 22px; }
+  .drawing-clock { min-width: 72px; padding: 8px 10px; gap: 6px; }
+  .drawing-clock strong { font-size: 21px; }
   .drawing-preview-note { font-size: 9px; }
+  .drawing-live-bar { min-height: 26px; }
+  .drawing-live-ai { font-size: 12px; padding: 4px 10px; max-width: 100%; flex-wrap: wrap; justify-content: center; }
   .drawing-editor { padding: 8px; gap: 8px; }
   .drawing-tools { padding: 4px; gap: 4px; }
   .drawing-tool-group + .drawing-tool-group { padding-left: 3px; }
-  .drawing-tools button { width: 44px; }
+  .drawing-tools button { width: 42px; height: 42px; }
   .drawing-colors { order: -1; width: 100%; justify-content: center; border: 0 !important; padding: 0 !important; }
   .drawing-colors button { width: 32px; }
+  .drawing-actions:has(> div:empty):not(:has(> button)) { display: none; }
   .drawing-actions > div { font-size: 10px; }
   .drawing-actions > button { min-width: 105px; padding: 12px; }
+}
+@media (max-width: 400px) {
+  .drawing-tools button { width: 38px; height: 40px; }
+  .drawing-colors button { width: 28px; }
 }
 @media (max-height: 700px) {
   .game-world:has(.drawing-page) > .header { min-height: 54px; height: 54px; padding-block: 4px; flex-wrap: nowrap; gap: 10px; }

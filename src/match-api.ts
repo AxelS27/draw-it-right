@@ -1,13 +1,19 @@
 import { auth } from './firebase';
 import type { Profile } from './profile';
 
+export type RoundEvent = 'normal' | 'speed_blitz' | 'double_points' | 'no_undo' | 'fat_brush' | 'precision' | 'upside_down' | 'shake' | 'tiny_brush' | 'ghost_ink' | 'mirror_x';
+export type AttackType = 'upside_down' | 'shake' | 'no_undo' | 'tiny_brush' | 'ghost_ink' | 'mirror_x';
+export type EventOfferKind = 'sabotage' | 'round_chaos';
+export type ActiveAttack = { type: AttackType; from: string };
+export type EventAnnouncement = { round: number; from: string; kind: EventOfferKind; detail: string };
 export type MatchEntry = { points: number; submitted: boolean; prediction: string; confidence?: number; coins: number };
 export type MatchResult = { round: number; prompt: string; entries: Record<string, MatchEntry> };
 export type MatchState = {
   session: number; phase: 'reveal' | 'drawing' | 'judging' | 'results' | 'leaderboard' | 'final'; round: number; prompt: string; deadline: number;
-  serverNow: number; rounds: number; timer: number; doublePoints: boolean; judgingMode?: 'model'; players: Record<string, Profile>;
+  serverNow: number; rounds: number; timer: number; doublePoints: boolean; roundEvent?: RoundEvent; judgingMode?: 'model'; players: Record<string, Profile>;
   order: string[]; scores: Record<string, number>; submissions: string[]; results: MatchResult[];
   awards: Record<string, number>; rewardsComplete: boolean;
+  myEventOffer?: EventOfferKind | null; myAttack?: ActiveAttack | null; eventLog?: EventAnnouncement[];
 };
 export type Wallet = { balance: number; owned: string[] };
 // The Worker URL is public. Keep production usable when a Vercel build omits the optional override.

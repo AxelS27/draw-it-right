@@ -1,8 +1,45 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type RefObject } from 'react';
 import { MessageCircle, Send, X } from 'lucide-react';
 import './room-chat.css';
 
 export type ChatMessage = { id: number | string; author: string; text: string; sample?: boolean; isYou?: boolean };
+
+export function useUnreadChat(messages: ChatMessage[], dialogRef: RefObject<HTMLDialogElement | null>) {
+  const [open, setOpen] = useState(false);
+  const [seen, setSeen] = useState(messages.length);
+  const initialized = useRef(false);
+
+  useEffect(() => {
+    if (!initialized.current) {
+      initialized.current = true;
+      setSeen(messages.length);
+      return;
+    }
+    if (open) {
+      setSeen(messages.length);
+      return;
+    }
+    const last = messages.at(-1);
+    if (last?.isYou) setSeen(messages.length);
+  }, [messages, open]);
+
+  const unread = open ? 0 : Math.max(0, messages.length - seen);
+  const openChat = () => {
+    setOpen(true);
+    setSeen(messages.length);
+    dialogRef.current?.showModal();
+  };
+  const closeChat = () => {
+    setOpen(false);
+    setSeen(messages.length);
+    dialogRef.current?.close();
+  };
+  const onDialogClose = () => {
+    setOpen(false);
+    setSeen(messages.length);
+  };
+  return { unread, openChat, closeChat, onDialogClose };
+}
 
 export function RoomChat({ messages, onSend, onClose, live = false }: { messages: ChatMessage[]; onSend: (text: string) => void | Promise<void>; onClose?: () => void; live?: boolean }) {
   const [draft, setDraft] = useState('');
@@ -23,7 +60,10 @@ export function RoomChat({ messages, onSend, onClose, live = false }: { messages
     <div className="waiting-chat-heading"><div><h2><MessageCircle size={18}/>Room chat</h2><p>{live ? 'Only players in this room can see messages.' : 'Local preview. Only you see your messages.'}</p></div>{onClose && <button className="waiting-icon-button" type="button" data-sound="close" aria-label="Close chat" onClick={onClose}><X size={19}/></button>}</div>
     <div className="waiting-chat-log" ref={log} role="log" aria-label={live ? 'Room messages' : 'Preview messages'} aria-live="polite" aria-relevant="additions">
       {live && messages.length === 0 && <p className="waiting-chat-empty">No messages yet. Say hi to the room!</p>}
-      {messages.map(message => <article key={message.id} className={`waiting-message${message.sample ? ' is-sample' : ''}`}><div><strong>{message.author}</strong><span>{message.sample ? 'Sample' : live ? message.isYou ? 'You' : 'Player' : 'Only you'}</span></div><p>{message.text}</p></article>)}
+      {messages.map(message => {
+        const isMine = live ? Boolean(message.isYou) : !message.sample;
+        return <article key={message.id} className={`waiting-message ${isMine ? 'is-mine' : 'is-other'}${message.sample ? ' is-sample' : ''}`}><div><strong>{message.author}</strong>{!live && <span>{message.sample ? 'Sample' : 'Only you'}</span>}</div><p>{message.text}</p></article>;
+      })}
     </div>
     {error && <p className="waiting-chat-error" role="alert">{error}</p>}
     <form className="waiting-chat-form" onSubmit={event => void submit(event)}><label className="sr-only" htmlFor={onClose ? 'mobile-chat-message' : 'chat-message'}>Message</label><input id={onClose ? 'mobile-chat-message' : 'chat-message'} value={draft} maxLength={160} placeholder="Say hello…" autoComplete="off" onChange={event => setDraft(event.target.value)}/><button type="submit" aria-label="Send message" disabled={!draft.trim() || sending}><Send size={18}/></button></form>

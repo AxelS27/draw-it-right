@@ -113,18 +113,18 @@
 @media (max-width: 600px) {
   .waiting-page { padding: 10px 12px 8px; gap: 7px; }
   .waiting-top { gap: 6px; }
-  .waiting-room-name { gap: 4px; }
-  .waiting-room-name > .waiting-icon-button { width: 32px; }
-  .waiting-room-name h1 { font-size: 17px; max-width: 160px; }
+  .waiting-room-name { flex: 1; min-width: 0; gap: 4px; }
+  .waiting-room-name > .waiting-icon-button { width: 36px; height: 36px; }
+  .waiting-room-name h1 { font-size: 17px; }
   .waiting-room-name > div > span { font-size: 7px; letter-spacing: .3px; }
   .waiting-room-name b { display: none; }
-  .waiting-invite { padding: 4px 6px 4px 10px; gap: 0; border-radius: 12px; }
+  .waiting-invite { padding: 4px 6px 4px 10px; gap: 0; border-radius: 12px; flex-shrink: 0; }
   .waiting-invite > div { margin-right: 3px; }
   .waiting-invite strong { font-size: 21px; letter-spacing: 2px; }
   .waiting-invite span { font-size: 7px; letter-spacing: .5px; }
   .waiting-invite .waiting-icon-button { width: 36px; background: transparent; }
   .waiting-invite .waiting-copy-link { display: none; }
-  .waiting-preview-note { font-size: 9px; white-space: nowrap; }
+  .waiting-preview-note { font-size: 9px; white-space: normal; overflow-wrap: anywhere; }
   .waiting-crew { padding: 6px 8px 0; border-radius: 14px; }
   .waiting-crew-heading { margin-bottom: 6px; }
   .waiting-crew-heading h2 { gap: 5px; font-size: 17px; }
@@ -140,10 +140,15 @@
   .waiting-settings strong { font-size: 10px; }
   .waiting-settings strong > span { margin: 0 2px; }
   .waiting-settings small { font-size: 9px; }
+  .waiting-start { margin-left: auto; }
   .waiting-start > span { display: none; }
   .waiting-bottom { flex-wrap: wrap; }
   .waiting-end-room { font-size: 10px; }
   .waiting-start .room-primary { min-width: 0; padding: 10px 12px; }
+}
+@media (max-width: 380px) {
+  .waiting-top { flex-wrap: wrap; }
+  .waiting-invite { margin-left: auto; }
 }
 @media (max-height: 700px) {
   .game-world:has(.waiting-page:not([hidden])) > .header { min-height: 54px; height: 54px; padding-block: 4px; flex-wrap: nowrap; gap: 10px; }

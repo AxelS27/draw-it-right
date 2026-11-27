@@ -23,7 +23,7 @@ def drawing(blank=False):
 class InferenceTests(unittest.TestCase):
     def test_preprocessing_and_batch(self):
         ink, empty = drawing(), drawing(blank=True)
-        self.assertEqual(preprocess(ink).shape, (28, 28, 1))
+        self.assertEqual(preprocess(ink).shape, (64, 64, 3))
         self.assertIsNone(preprocess(empty))
         result = predict([ink] * 40)
         self.assertEqual(len(result), 40)

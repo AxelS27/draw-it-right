@@ -6,17 +6,18 @@ type Stroke = { points: Point[]; color: string; size: number; line: boolean };
 
 export type DrawingCanvasHandle = { snapshot: (format?: 'png' | 'jpeg') => string; hasDrawing: () => boolean };
 
-export function DrawingCanvas({ locked, ref, onEmpty }: { locked: boolean; ref?: Ref<DrawingCanvasHandle>; onEmpty?: () => void }) {
+export function DrawingCanvas({ locked, ref, onEmpty, noUndo = false, forceSize, canvasClassName, flipped = false, shaking = false, mirrored = false, ghost = false }: { locked: boolean; ref?: Ref<DrawingCanvasHandle>; onEmpty?: () => void; noUndo?: boolean; forceSize?: number; canvasClassName?: string; flipped?: boolean; shaking?: boolean; mirrored?: boolean; ghost?: boolean }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const strokes = useRef<Stroke[]>([]);
   const undone = useRef<Stroke[]>([]);
   const current = useRef<Stroke | null>(null);
   const pointer = useRef<number | null>(null);
   const [size, setSize] = useState(8);
+  const activeSize = forceSize ?? size;
   const [tool, setTool] = useState<'brush' | 'line' | 'eraser'>('brush');
-  const eraser = tool === 'eraser';
+  const eraser = !noUndo && tool === 'eraser';
   const [canvasScale, setCanvasScale] = useState(1);
-  const eraserDiameter = Math.max(1, size * 3 * canvasScale);
+  const eraserDiameter = Math.max(1, activeSize * 3 * canvasScale);
   const cursorSize = Math.ceil(eraserDiameter / 2 + 2) * 2;
   const cursorCenter = cursorSize / 2;
   const eraserCursor = `<svg xmlns="http://www.w3.org/2000/svg" width="${cursorSize}" height="${cursorSize}" viewBox="0 0 ${cursorSize} ${cursorSize}"><circle cx="${cursorCenter}" cy="${cursorCenter}" r="${eraserDiameter / 2}" fill="none" stroke="white" stroke-width="3"/><circle cx="${cursorCenter}" cy="${cursorCenter}" r="${eraserDiameter / 2}" fill="none" stroke="#243746" stroke-width="1"/></svg>`;
@@ -62,6 +63,40 @@ export function DrawingCanvas({ locked, ref, onEmpty }: { locked: boolean; ref?:
     return () => observer.disconnect();
   }, []);
   useEffect(() => {
+    const element = canvas.current;
+    if (!element) return;
+    const baseTransform = `${flipped ? 'rotate(180deg) ' : ''}${mirrored ? 'scaleX(-1)' : ''}`.trim();
+    if (!shaking && !ghost) {
+      element.style.transform = baseTransform;
+      element.style.opacity = '';
+      return;
+    }
+    let frame = 0;
+    const tick = (t: number) => {
+      if (shaking) {
+        const dx = Math.sin(t * 0.055) * 14;
+        const dy = Math.cos(t * 0.072) * 10;
+        const deg = Math.sin(t * 0.043) * 2.2 + (flipped ? 180 : 0);
+        element.style.transform = `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px) rotate(${deg.toFixed(2)}deg)${mirrored ? ' scaleX(-1)' : ''}`;
+      } else {
+        element.style.transform = baseTransform;
+      }
+      if (ghost) {
+        const alpha = 0.08 + 0.92 * (0.5 + 0.5 * Math.sin(t * 0.0045));
+        element.style.opacity = alpha.toFixed(2);
+      } else {
+        element.style.opacity = '';
+      }
+      frame = window.requestAnimationFrame(tick);
+    };
+    frame = window.requestAnimationFrame(tick);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      element.style.transform = baseTransform;
+      element.style.opacity = '';
+    };
+  }, [flipped, shaking, mirrored, ghost]);
+  useEffect(() => {
     if (locked) {
       if (current.current) { strokes.current.push(current.current); current.current = null; }
       pointer.current = null;
@@ -78,7 +113,7 @@ export function DrawingCanvas({ locked, ref, onEmpty }: { locked: boolean; ref?:
     event.currentTarget.setPointerCapture(event.pointerId);
     pointer.current = event.pointerId;
     undone.current = [];
-    current.current = { points: [point(event)], color: eraser ? '#ffffff' : '#000000', size: eraser ? size * 3 : size, line: tool === 'line' };
+    current.current = { points: [point(event)], color: eraser ? '#ffffff' : '#000000', size: eraser ? activeSize * 3 : activeSize, line: tool === 'line' };
     paint();
     syncHistory();
   }
@@ -99,11 +134,11 @@ export function DrawingCanvas({ locked, ref, onEmpty }: { locked: boolean; ref?:
   }
 
   return <>
-    <div className="drawing-paper"><canvas ref={canvas} width={800} height={500} style={{ cursor }} aria-label="Drawing canvas. Use a mouse, touch, or pen to draw." onPointerDown={down} onPointerMove={move} onPointerUp={event => { if (pointer.current === event.pointerId) { move(event); finish(); } }} onPointerCancel={event => { if (pointer.current === event.pointerId) finish(); }} onLostPointerCapture={event => { if (pointer.current === event.pointerId) finish(); }}/></div>
+    <div className={`drawing-paper${canvasClassName ? ` ${canvasClassName}` : ''}`}><canvas ref={canvas} width={800} height={500} style={{ cursor }} aria-label="Drawing canvas. Use a mouse, touch, or pen to draw." onPointerDown={down} onPointerMove={move} onPointerUp={event => { if (pointer.current === event.pointerId) { move(event); finish(); } }} onPointerCancel={event => { if (pointer.current === event.pointerId) finish(); }} onLostPointerCapture={event => { if (pointer.current === event.pointerId) finish(); }}/></div>
     <fieldset className="drawing-tools" disabled={locked} aria-label="Drawing tools">
-      <div className="drawing-tool-group"><button type="button" title="Brush" aria-label="Brush" aria-pressed={tool === 'brush'} onClick={() => setTool('brush')}><Pencil size={19}/></button><button type="button" title="Straight line" aria-label="Straight line" aria-pressed={tool === 'line'} onClick={() => setTool('line')}><Minus size={19}/></button><button type="button" title="Eraser" aria-label="Eraser" aria-pressed={eraser} onClick={() => setTool('eraser')}><Eraser size={19}/></button></div>
-      <div className="drawing-tool-group" role="group" aria-label="Brush size">{[4, 8, 16].map((value, index) => <button key={value} type="button" aria-label={`${['Small', 'Medium', 'Large'][index]} brush`} aria-pressed={size === value} onClick={() => setSize(value)}><span className="drawing-size-dot" style={{ width: value + 2, height: value + 2 }}/></button>)}</div>
-      <div className="drawing-tool-group"><button type="button" aria-label="Undo" title="Undo" disabled={!history.undo} onClick={() => changeHistory(false)}><Undo2 size={19}/></button><button type="button" aria-label="Redo" title="Redo" disabled={!history.redo} onClick={() => changeHistory(true)}><Redo2 size={19}/></button><button type="button" aria-label="Clear canvas" title="Clear canvas" disabled={!history.undo} onClick={() => clearDialog.current?.showModal()}><Trash2 size={19}/></button></div>
+      <div className="drawing-tool-group"><button type="button" title="Brush" aria-label="Brush" aria-pressed={tool === 'brush' || (noUndo && tool === 'eraser')} onClick={() => setTool('brush')}><Pencil size={19}/></button><button type="button" title="Straight line" aria-label="Straight line" aria-pressed={tool === 'line'} onClick={() => setTool('line')}><Minus size={19}/></button><button type="button" title="Eraser" aria-label="Eraser" disabled={noUndo} aria-pressed={eraser} onClick={() => setTool('eraser')}><Eraser size={19}/></button></div>
+      <div className="drawing-tool-group" role="group" aria-label="Brush size">{[4, 8, 16].map((value, index) => <button key={value} type="button" aria-label={`${['Small', 'Medium', 'Large'][index]} brush`} disabled={forceSize !== undefined && forceSize !== value} aria-pressed={activeSize === value} onClick={() => setSize(value)}><span className="drawing-size-dot" style={{ width: value + 2, height: value + 2 }}/></button>)}</div>
+      <div className="drawing-tool-group"><button type="button" aria-label="Undo" title="Undo" disabled={noUndo || !history.undo} onClick={() => changeHistory(false)}><Undo2 size={19}/></button><button type="button" aria-label="Redo" title="Redo" disabled={noUndo || !history.redo} onClick={() => changeHistory(true)}><Redo2 size={19}/></button><button type="button" aria-label="Clear canvas" title="Clear canvas" disabled={noUndo || !history.undo} onClick={() => clearDialog.current?.showModal()}><Trash2 size={19}/></button></div>
     </fieldset>
     <dialog ref={clearDialog} className="waiting-player-dialog drawing-clear" aria-labelledby="clear-title"><h2 id="clear-title">Start fresh?</h2><p>This clears your whole drawing and undo history.</p><div><button className="room-secondary" onClick={() => clearDialog.current?.close()}>Keep drawing</button><button className="room-primary" onClick={() => { if (!locked) { strokes.current = []; undone.current = []; current.current = null; syncHistory(); paint(); onEmpty?.(); } clearDialog.current?.close(); }}>Clear canvas</button></div></dialog>
   </>;

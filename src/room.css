@@ -147,6 +147,7 @@
 .room-summary > p { text-align: center; font-size: 10px; line-height: 1.7; color: #607b7b; margin-top: 10px; }
 .room-notice { font-size: 13px; color: #ffe1a0; line-height: 1.6; overflow-wrap: anywhere; }
 .room-notice:not(:empty) { margin-top: 20px; padding: 16px; border: 1px solid #ffffff30; border-radius: 12px; background: #183e5260; }
+.room-active-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
 .room-empty { display: grid; justify-items: center; gap: 20px; max-width: 580px; margin: 40px auto; text-align: center; }
 .room-empty h1 { font-family: 'Fredoka', sans-serif; font-size: 30px; }
 .room-empty p { color: #607b7b; font-size: 14px; line-height: 1.7; }

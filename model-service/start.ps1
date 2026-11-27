@@ -59,8 +59,14 @@ try {
     Write-Host 'Checking model dependencies and artifact...'
     & $venvPython -m pip install --disable-pip-version-check -q -r (Join-Path $PSScriptRoot 'requirements.txt')
     Assert-Success 'Python dependencies failed to install.'
-    & $venvPython (Join-Path $PSScriptRoot 'download-model.py')
-    Assert-Success 'Could not verify the model artifact.'
+    $yoloModel = Join-Path $PSScriptRoot 'best_quickdraw_yolo.pt'
+    $bundledModelZip = Join-Path $root 'model\best_quickdraw_yolo.pt.zip'
+    if (-not (Test-Path $yoloModel) -and (Test-Path $bundledModelZip)) {
+        Copy-Item -Path $bundledModelZip -Destination $yoloModel
+    }
+    if (-not (Test-Path $yoloModel)) {
+        throw "Model artifact not found at $yoloModel"
+    }
 
     if (-not (Test-Path $cloudflared)) {
         Write-Host 'Downloading cloudflared from the official Cloudflare GitHub release...'
@@ -126,7 +132,10 @@ try {
         Start-Sleep -Seconds 1
         if ($tunnel.HasExited) { throw 'cloudflared stopped before creating a tunnel.' }
         $log = Get-Content $tunnelLog -Raw -ErrorAction SilentlyContinue
-        if ($log -match 'https://[a-z0-9-]+\.trycloudflare\.com') { $url = $Matches[0]; break }
+        if ($log) {
+            $tunnelMatch = [regex]::Match([string]$log, 'https://[a-z0-9-]+\.trycloudflare\.com')
+            if ($tunnelMatch.Success) { $url = $tunnelMatch.Value; break }
+        }
     }
     if (-not $url) { throw "Tunnel URL not received. Check $tunnelLog" }
     Wait-ForHealth $url 90

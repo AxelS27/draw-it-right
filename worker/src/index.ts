@@ -1,6 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
-import { advance, createMatch, finishJudging, publicMatch, submit, type Match, type Prediction } from './engine';
+import { addLatePlayer, advance, applyEventChoice, createMatch, finishJudging, publicMatch, rematch, submit, type AttackType, type Match, type Prediction, type RoundEvent } from './engine';
 import { changeFirestoreRoom, firestoreRoom, type RoomInfo } from './firestore-room';
 
 interface Env {
@@ -46,7 +46,7 @@ export default {
         }
         return Response.json({ ok: true, inferenceConfigured: configured }, { headers: cors });
       }
-      const route = /^\/rooms\/(\d{6})\/(presence|socket|submit|draft|drawing\/\d+\/[A-Za-z0-9_-]+)$/.exec(url.pathname);
+      const route = /^\/rooms\/(\d{6})\/(presence|socket|submit|draft|event|rematch|drawing\/\d+\/[A-Za-z0-9_-]+)$/.exec(url.pathname);
       const socket = route?.[2] === 'socket' || route?.[2] === 'presence';
       const protocols = request.headers.get('Sec-WebSocket-Protocol')?.split(',').map(s => s.trim()) ?? [];
       const token = socket && protocols[0] === 'firebase' ? protocols[1] : request.headers.get('Authorization')?.replace(/^Bearer /, '');
@@ -79,7 +79,7 @@ export class MatchRoom extends DurableObject<Env> {
   private async schedule(match?: Match) {
     const grace = await this.ctx.storage.get<Record<string, number>>('disconnects') ?? {};
     const deadlines = Object.values(grace);
-    if (match?.phase === 'final' && !await this.ctx.storage.get('roomClosed')) deadlines.push(Date.now() + (match.awarded.length === match.order.length ? 10000 : 60000));
+    if (match?.phase === 'final' && !await this.ctx.storage.get('roomClosed')) deadlines.push(Date.now() + (match.awarded.length === match.order.length ? 120000 : 60000));
     else if (match && match.phase !== 'final') deadlines.push(match.deadline);
     if (deadlines.length) await this.ctx.storage.setAlarm(Math.max(Date.now() + 1000, Math.min(...deadlines)));
     else await this.ctx.storage.deleteAlarm();
@@ -112,10 +112,10 @@ export class MatchRoom extends DurableObject<Env> {
     await this.schedule(await this.state());
   }
   private broadcast(match: Match) {
-    const message = JSON.stringify({ type: 'match', match: publicMatch(match) });
     for (const ws of this.ctx.getWebSockets()) {
-      if ((ws.deserializeAttachment() as { kind?: string } | null)?.kind === 'presence') continue;
-      try { ws.send(message); } catch { ws.close(1011, 'Disconnected'); }
+      const attachment = ws.deserializeAttachment() as { uid?: string; kind?: string } | null;
+      if (attachment?.kind === 'presence') continue;
+      try { ws.send(JSON.stringify({ type: 'match', match: publicMatch(match, attachment?.uid) })); } catch { ws.close(1011, 'Disconnected'); }
     }
   }
   private async save(match: Match) {
@@ -151,6 +151,20 @@ export class MatchRoom extends DurableObject<Env> {
         return initial;
       });
     }
+    if (match && !match.players[uid] && url.pathname.endsWith('/socket')) {
+      const room = JSON.parse(decodeURIComponent(request.headers.get('X-Room-Info') ?? '')) as RoomInfo;
+      if (room.options.lateJoin && room.players[uid] && match.phase !== 'final') {
+        const joined = await this.ctx.storage.transaction(async storage => {
+          const latest = await storage.get<Match>('state');
+          if (!latest || latest.players[uid] || latest.phase === 'final') return latest ?? null;
+          const next = addLatePlayer(latest, uid, room.players[uid]!);
+          if (!next.added) return latest;
+          await storage.put('state', next.match);
+          return next.match;
+        });
+        if (joined) { match = joined; this.broadcast(match); }
+      }
+    }
     if (!match || !match.players[uid]) return error('Match not found', 404);
     if (url.pathname.endsWith('/socket')) {
       if (request.headers.get('Upgrade')?.toLowerCase() !== 'websocket') return error('WebSocket required');
@@ -158,7 +172,7 @@ export class MatchRoom extends DurableObject<Env> {
       if (matchToken) await this.ctx.storage.put(`token:${uid}`, matchToken);
       const pair = new WebSocketPair(); const [client, server] = Object.values(pair);
       this.ctx.acceptWebSocket(server); server.serializeAttachment({ uid });
-      server.send(JSON.stringify({ type: 'match', match: publicMatch(match) }));
+      server.send(JSON.stringify({ type: 'match', match: publicMatch(match, uid) }));
       return new Response(null, { status: 101, webSocket: client, headers: { 'Sec-WebSocket-Protocol': 'firebase' } });
     }
     const drawing = /^\/rooms\/\d{6}\/drawing\/(\d+)\/([A-Za-z0-9_-]+)$/.exec(url.pathname);
@@ -166,6 +180,42 @@ export class MatchRoom extends DurableObject<Env> {
       const round = Number(drawing[1]); const owner = drawing[2]!;
       if (round < 1 || round > match.results.length || !match.players[owner]) return error('Drawing not available', 404);
       return Response.json({ image: await this.ctx.storage.get<string>(`image:${match.session}:${round}:${owner}`) ?? '' });
+    }
+    if (url.pathname.endsWith('/rematch') && request.method === 'POST') {
+      const room = JSON.parse(decodeURIComponent(request.headers.get('X-Room-Info') ?? '')) as RoomInfo;
+      if (room.host !== uid) return error('Only the host can start a rematch', 403);
+      const nextMatch = await this.ctx.storage.transaction(async storage => {
+        const latest = await storage.get<Match>('state');
+        if (!latest || latest.phase !== 'final') return null;
+        const reset = rematch(latest, Date.now());
+        await storage.delete('roomClosed');
+        await storage.put('state', reset);
+        return reset;
+      });
+      if (!nextMatch) return error('Match is not finished yet', 409);
+      await this.schedule(nextMatch);
+      this.broadcast(nextMatch);
+      return Response.json({ ok: true });
+    }
+    if (url.pathname.endsWith('/event') && request.method === 'POST') {
+      const body = await request.json() as { kind?: unknown; attack?: unknown; roundEvent?: unknown };
+      const choice = body.kind === 'sabotage' && typeof body.attack === 'string'
+        ? { kind: 'sabotage' as const, attack: body.attack as AttackType }
+        : body.kind === 'round_chaos' && typeof body.roundEvent === 'string'
+          ? { kind: 'round_chaos' as const, roundEvent: body.roundEvent as Exclude<RoundEvent, 'normal'> }
+          : null;
+      if (!choice) return error('Invalid event choice');
+      const result = await this.ctx.storage.transaction(async storage => {
+        const latest = await storage.get<Match>('state');
+        if (!latest) return null;
+        const next = applyEventChoice(latest, uid, choice);
+        if (!next.accepted) return null;
+        await storage.put('state', next.match);
+        return next.match;
+      });
+      if (!result) return error('Event choice unavailable', 409);
+      this.broadcast(result);
+      return Response.json({ ok: true });
     }
     if ((url.pathname.endsWith('/submit') || url.pathname.endsWith('/draft')) && request.method === 'POST') {
       if (Number(request.headers.get('Content-Length') ?? 0) > 190000) return error('Drawing is too large (max 135 KB)', 413);
@@ -179,14 +229,39 @@ export class MatchRoom extends DurableObject<Env> {
         if (bytes.charCodeAt(0) !== 255 || bytes.charCodeAt(1) !== 216 || bytes.charCodeAt(2) !== 255 || bytes.charCodeAt(bytes.length - 2) !== 255 || bytes.charCodeAt(bytes.length - 1) !== 217) return error('Invalid JPEG drawing');
       }
       if (url.pathname.endsWith('/draft')) {
+        let currentMatch: Match | null = null;
         const saved = await this.ctx.storage.transaction(async storage => {
           const latest = await storage.get<Match>('state');
           if (!latest || latest.phase !== 'drawing' || Date.now() >= latest.deadline || latest.submitted[uid]) return false;
+          currentMatch = latest;
           if (emptyDraft) await storage.delete(`image:${latest.session}:${latest.round}:${uid}`);
           else await storage.put(`image:${latest.session}:${latest.round}:${uid}`, body.image);
           return true;
         });
-        return saved ? Response.json({ saved: true }) : error('Drawing time has ended', 409);
+        if (!saved || !currentMatch) return error('Drawing time has ended', 409);
+        const matchSnapshot = currentMatch as Match;
+        if (emptyDraft || typeof body.image !== 'string' || !this.env.INFERENCE_URL || !this.env.INFERENCE_SECRET || !this.env.INFERENCE_URL.startsWith('https://')) {
+          return Response.json({ saved: true, prediction: null });
+        }
+        try {
+          const inferenceResponse = await fetch(`${this.env.INFERENCE_URL.replace(/\/$/, '')}/predict`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Inference-Secret': this.env.INFERENCE_SECRET },
+            body: JSON.stringify({ prompt: matchSnapshot.prompt, images: [body.image] }),
+            signal: AbortSignal.timeout(4000),
+          });
+          if (!inferenceResponse.ok) return Response.json({ saved: true, prediction: null });
+          const parsed = await inferenceResponse.json() as { predictions?: Array<{ class: string; confidence: number; targetConfidence: number } | null> };
+          const row = parsed.predictions?.[0];
+          if (!row) return Response.json({ saved: true, prediction: null });
+          const correct = row.class.toLowerCase() === matchSnapshot.prompt.toLowerCase();
+          const multiplier = (matchSnapshot.roundEvent === 'double_points' || (matchSnapshot.round === matchSnapshot.rounds && matchSnapshot.doublePoints)) ? 2 : 1;
+          const precisionBonus = matchSnapshot.roundEvent === 'precision' && row.confidence >= 0.85 ? 400 : 0;
+          const points = ((correct ? 500 : 0) + Math.round(1000 * row.targetConfidence) + precisionBonus) * multiplier;
+          return Response.json({ saved: true, prediction: { class: row.class, confidence: row.confidence, targetConfidence: row.targetConfidence, points } });
+        } catch {
+          return Response.json({ saved: true, prediction: null });
+        }
       }
       if (emptyDraft) return error('A blank drawing cannot be submitted');
       const result = await this.ctx.storage.transaction(async storage => {
@@ -239,7 +314,11 @@ export class MatchRoom extends DurableObject<Env> {
     await this.expireDisconnects();
     let match = await this.state();
     if (!match) { await this.schedule(); return; }
-    if (match.phase === 'final') { await this.award(match); return; }
+    if (match.phase === 'final') {
+      if (match.awarded.length < match.order.length) await this.award(match);
+      else await this.finishRoom(match);
+      return;
+    }
     const token = await this.ctx.storage.get<string>('roomToken');
     if (token) {
       try {
@@ -316,7 +395,7 @@ export class MatchRoom extends DurableObject<Env> {
     }
     if (awarded.size !== match.awarded.length) await this.save({ ...match, awarded: [...awarded] });
     if (awarded.size < match.order.length) await this.ctx.storage.setAlarm(Date.now() + 60000);
-    else await this.finishRoom({ ...match, awarded: [...awarded] });
+    else await this.schedule({ ...match, awarded: [...awarded] });
   }
 }
 

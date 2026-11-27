@@ -1,6 +1,6 @@
 export type AudioScene = 'landing' | 'waiting' | 'drawing' | 'judging' | 'showcase' | 'leaderboard' | 'podium';
 export type InterfaceSound = 'press' | 'close' | 'open' | 'switch-on' | 'switch-off' | 'select' | 'increment' | 'decrement';
-export type SoundEffect = InterfaceSound | 'tick' | 'submit' | 'podium' | 'reveal' | 'drumroll' | 'champion' | 'cheers';
+export type SoundEffect = InterfaceSound | 'tick' | 'submit' | 'podium' | 'reveal' | 'drumroll' | 'champion' | 'cheers' | 'event-offer' | 'event-twist' | 'event-sabotage';
 export type MusicTheme = 'ragtime' | 'holiday';
 export type SoundPreferences = { music: number; effects: number; muted: boolean; theme: MusicTheme };
 const storageKey = 'draw-it-right:sound';
@@ -223,6 +223,18 @@ class GameAudio {
     }
     if (effect === 'cheers') {
       this.playClip('/audio/crowd-cheers.mp3', 0.9);
+      return;
+    }
+    if (effect === 'event-offer') {
+      this.playClip('/audio/event-offer.mp3', 0.75);
+      return;
+    }
+    if (effect === 'event-twist') {
+      this.playClip('/audio/event-twist.mp3', 0.8);
+      return;
+    }
+    if (effect === 'event-sabotage') {
+      this.playClip('/audio/event-sabotage.mp3', 0.8);
       return;
     }
     if (effect === 'champion') {

@@ -1,30 +1,33 @@
-"""Private batch inference for the Draw It Right QuickDraw model."""
+"""Private batch inference for the Draw It Right QuickDraw YOLOv8 model."""
 import base64
 import hmac
 import json
 import os
+import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-# Constrain TensorFlow's thread pool for the laptop CPU and small containers.
-os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
-os.environ.setdefault("OMP_NUM_THREADS", "2")
 import cv2
 import numpy as np
-import tensorflow as tf
+import torch
+from ultralytics import YOLO
 
 ROOT = Path(__file__).resolve().parent
-CLASSES = json.loads((ROOT / "class_names.json").read_text())
-MODEL = tf.keras.models.load_model(ROOT / "best_quickdraw_model.keras", compile=False)
-if MODEL.output_shape[-1] != len(CLASSES):
-    raise RuntimeError("Model output count does not match its training class order")
+MODEL_PATH = ROOT / "best_quickdraw_yolo.pt"
+DEVICE = 0 if torch.cuda.is_available() else "cpu"
+MODEL = YOLO(str(MODEL_PATH))
+CLASSES = [MODEL.names[index] for index in range(len(MODEL.names))]
+MODEL_LOCK = threading.Lock()
+
+# Warm up the model once at startup so the first /predict call has no cold-start spike.
+MODEL.predict([np.zeros((64, 64, 3), dtype=np.uint8)], imgsz=64, device=DEVICE, verbose=False)
 
 
 def preprocess(image: str) -> np.ndarray | None:
-    """Black ink on white JPEG -> white stroke on black, 28x28, as trained.
+    """Black ink on white JPEG -> white stroke on black, 64x64 BGR, as trained.
 
-    Unlike the upstream demo, threshold before finding bounds: JPEG compression of
-    an 800x500 canvas otherwise gives every near-white pixel a nonzero value.
+    Threshold before finding bounds: JPEG compression of an 800x500 canvas
+    otherwise gives every near-white pixel a nonzero value.
     """
     if not isinstance(image, str) or not image.startswith("data:image/jpeg;base64,") or len(image) > 180000:
         raise ValueError("Expected a JPEG canvas")
@@ -46,8 +49,8 @@ def preprocess(image: str) -> np.ndarray | None:
     x, y, width, height = cv2.boundingRect(bounds)
     pad = 10  # Keep the upstream inference crop and resize convention.
     cropped = strokes[max(0, y - pad):min(500, y + height + pad), max(0, x - pad):min(800, x + width + pad)]
-    resized = cv2.resize(cropped, (28, 28), interpolation=cv2.INTER_AREA)
-    return resized.astype(np.float32)[..., None] / 255.0
+    resized = cv2.resize(cropped, (64, 64), interpolation=cv2.INTER_AREA)
+    return cv2.cvtColor(resized, cv2.COLOR_GRAY2BGR)
 
 
 def predict(images: list[str]) -> list[dict | None]:
@@ -63,14 +66,15 @@ def predict(images: list[str]) -> list[dict | None]:
     valid = [tensor for tensor in processed if tensor is not None]
     if not valid:
         return [None for _ in images]
-    probabilities = MODEL.predict(np.stack(valid), batch_size=8, verbose=0)
+    with MODEL_LOCK:
+        batch_results = MODEL.predict(valid, imgsz=64, device=DEVICE, batch=len(valid), verbose=False)
     results: list[dict | None] = []
     index = 0
     for tensor in processed:
         if tensor is None:
             results.append(None)
         else:
-            row = probabilities[index]
+            row = batch_results[index].probs.data.detach().cpu().numpy()
             top = int(np.argmax(row))
             results.append({"class": CLASSES[top], "confidence": float(row[top]), "targetConfidence": None, "probabilities": row.tolist()})
             index += 1

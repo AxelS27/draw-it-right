@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { auth } from './firebase';
 import { changeRoom, createRoom, defaultRoomOptions, joinRoom, roomError, watchRoom, type Room } from './rooms';
 import { ArrowLeft, ArrowRight, Clock3, Minus, Plus, Settings2, Sparkles, Trophy, Users } from 'lucide-react';
@@ -52,8 +52,8 @@ function RoomForm({ initial, editing, busy, onSubmit, onCancel }: { initial: Roo
     <div className="room-toggles">{([
       ['doublePoints', 'Double-point finale', 'Make the last round count twice.'],
       ['reactions', 'Emote reactions', 'Allow player reactions.'],
-      ['lateJoin', 'Late joining (coming soon)', 'Unavailable until live rounds are implemented.'],
-    ] as const).map(([key, label, hint]) => <label className="room-toggle" key={key}><span><strong>{label}</strong><small>{hint}</small></span><input type="checkbox" role="switch" disabled={key === 'lateJoin'} checked={options[key]} onChange={event => setOptions({ ...options, [key]: event.target.checked })}/></label>)}</div>
+      ['lateJoin', 'Late joining', 'Allow new players to join mid-match before the final podium.'],
+    ] as const).map(([key, label, hint]) => <label className="room-toggle" key={key}><span><strong>{label}</strong><small>{hint}</small></span><input type="checkbox" role="switch" checked={options[key]} onChange={event => setOptions({ ...options, [key]: event.target.checked })}/></label>)}</div>
     <div className="room-form-actions"><button type="button" className="room-secondary" data-sound="close" onClick={onCancel}>Cancel</button><button className="room-primary" type="submit" disabled={busy}>{busy ? 'Saving…' : editing ? 'Save settings' : 'Create room'}<ArrowRight size={18}/></button></div>
   </form>;
 }
@@ -70,7 +70,10 @@ export function RoomPages({ path, profile, signedIn, ready, onLogin }: Props) {
   const [notice, setNotice] = useState('');
   const [joined, setJoined] = useState(false);
   const [startedRoom, setStartedRoom] = useState<Room | null>(null);
+  const noticeTimer = useRef<number | undefined>(undefined);
   const activeMember = Boolean(uid && room?.players[uid] && room.status !== 'closed');
+
+  useEffect(() => () => { if (noticeTimer.current) window.clearTimeout(noticeTimer.current); }, []);
 
   useEffect(() => {
     if (!code || !uid || !profile) return;
@@ -114,18 +117,28 @@ export function RoomPages({ path, profile, signedIn, ready, onLogin }: Props) {
   }
 
   async function copy(value: string, label: string) {
-    try { await navigator.clipboard.writeText(value); setNotice(`${label} copied.`); }
+    if (noticeTimer.current) window.clearTimeout(noticeTimer.current);
+    try {
+      await navigator.clipboard.writeText(value);
+      setNotice(`${label} copied.`);
+      noticeTimer.current = window.setTimeout(() => setNotice(''), 2500);
+    }
     catch { setNotice(`Couldn�t copy. Copy this manually: ${value}`); }
   }
 
   const activeCode = /already in room (\d{6})/.exec(notice)?.[1];
-  const returnToRoom = activeCode && <button type="button" className="room-secondary" onClick={() => navigate(`/room/${activeCode}`)}>Return to room {activeCode}</button>;
+  const returnToRoom = activeCode && uid && (
+    <div className="room-active-actions">
+      <button type="button" className="room-primary" onClick={() => navigate(`/room/${activeCode}`)}>Rejoin room {activeCode}</button>
+      <button type="button" className="room-secondary" disabled={busy} onClick={() => void perform(() => changeRoom(activeCode, uid, 'leave'), () => setNotice(''))}>Leave room {activeCode}</button>
+    </div>
+  );
   const back = <button className="room-back" type="button" onClick={() => navigate('/')}><ArrowLeft size={17}/>Back to lobby</button>;
   if (!ready || !signedIn || !profile || !uid) return <main className="room-page">{back}<section className="room-card room-empty"><h1>{!ready ? 'Just a moment�' : !signedIn ? 'Your party starts here' : 'Finish your player profile'}</h1><p>{!ready ? 'Checking your account.' : !signedIn ? 'Log in to join or create a room.' : 'Choose your name and avatar to continue.'}</p>{ready && !signedIn && <button type="button" className="room-primary" onClick={onLogin}>Log in to continue<ArrowRight size={18}/></button>}</section></main>;
   if (isNew || (editing && room && code)) return <main className="room-page room-creator"><div className="room-topline">{back}</div><div className="room-creator-layout"><RoomForm key={isNew ? 'new' : 'edit'} initial={isNew ? defaultRoomOptions : room!.options} editing={!isNew} busy={busy} onSubmit={saveRoom} onCancel={() => isNew ? navigate('/') : setEditing(false)}/></div><p className="room-notice" role="alert">{notice}</p>{returnToRoom}</main>;
   if (code && loading) return <main className="room-page">{back}<section className="room-card room-empty"><h1>Finding your room�</h1></section></main>;
-  if (code && room && ((room.status === 'started' && room.players[uid]) || (room.status === 'closed' && startedRoom?.players[uid]))) return <LiveMatch code={code} uid={uid} roomClosed={room.status === 'closed'} options={room.options} onLeave={() => { if (room.status === 'closed') navigate('/'); else void perform(() => changeRoom(code, uid, 'leave'), () => navigate('/')); }} onFinish={() => { if (room.status === 'closed') navigate('/'); else void perform(() => changeRoom(code, uid, room.host === uid ? 'close' : 'leave'), () => navigate('/')); }}/>;
+  if (code && room && ((room.status === 'started' && room.players[uid]) || (room.status === 'closed' && startedRoom?.players[uid]))) return <LiveMatch code={code} uid={uid} isHost={room.host === uid} roomClosed={room.status === 'closed'} options={room.options} onLeave={() => { if (room.status === 'closed') navigate('/'); else void perform(() => changeRoom(code, uid, 'leave'), () => navigate('/')); }} onFinish={() => { if (room.status === 'closed') navigate('/'); else void perform(() => changeRoom(code, uid, room.host === uid ? 'close' : 'leave'), () => navigate('/')); }}/>;
   if (!code || !room || room.status === 'closed') return <main className="room-page">{back}<section className="room-card room-empty"><h1>Room not found</h1><p>{notice || 'Double-check your invite code or create a new room.'}</p><button className="room-primary" onClick={() => navigate('/room/new')}>Create a room</button></section></main>;
-  if (!room.players[uid]) return <main className="room-page">{back}<section className="room-card room-empty"><h1>{room.options.name || 'Join this room?'}</h1><p>{Object.keys(room.players).length} / {room.options.capacity} players � {room.options.rounds} rounds � {formatDuration(room.options.timer)}{room.locked ? ' � Locked' : ''}</p>{room.status === 'waiting' && !room.locked && !room.banned.includes(uid) && Object.keys(room.players).length < room.options.capacity && <button className="room-primary" disabled={busy} onClick={() => void perform(() => joinRoom(code, uid), () => setJoined(true))}>{busy ? 'Joining�' : 'Join room'}<ArrowRight size={18}/></button>}<p className="room-notice" role="alert">{notice || (joined ? 'Joining�' : room.banned.includes(uid) ? 'You were removed from this room.' : room.status !== 'waiting' ? 'This match has started.' : room.locked ? 'Ask the host to unlock this room.' : Object.keys(room.players).length >= room.options.capacity ? 'This room is full.' : '')}</p>{returnToRoom}</section></main>;
+  if (!room.players[uid]) return <main className="room-page">{back}<section className="room-card room-empty"><h1>{room.options.name || 'Join this room?'}</h1><p>{Object.keys(room.players).length} / {room.options.capacity} players � {room.options.rounds} rounds � {formatDuration(room.options.timer)}{room.locked ? ' � Locked' : ''}</p>{(room.status === 'waiting' || (room.status === 'started' && room.options.lateJoin)) && !room.locked && !room.banned.includes(uid) && Object.keys(room.players).length < room.options.capacity && <button className="room-primary" disabled={busy} onClick={() => void perform(() => joinRoom(code, uid), () => setJoined(true))}>{busy ? 'Joining�' : 'Join room'}<ArrowRight size={18}/></button>}<p className="room-notice" role="alert">{notice || (joined ? 'Joining�' : room.banned.includes(uid) ? 'You were removed from this room.' : room.status !== 'waiting' && !room.options.lateJoin ? 'This match has started.' : room.locked ? 'Ask the host to unlock this room.' : Object.keys(room.players).length >= room.options.capacity ? 'This room is full.' : '')}</p>{returnToRoom}</section></main>;
   return <WaitingRoom room={room} uid={uid} code={code} duration={formatDuration(room.options.timer)} busy={busy} notice={notice} onEdit={() => setEditing(true)} onCopy={copy} onAction={(action, value) => perform(async () => { if (action === 'start') await matchRequest('/health'); await changeRoom(code, uid, action, value); }, action === 'leave' || action === 'close' ? () => navigate('/') : undefined)}/>;
 }
