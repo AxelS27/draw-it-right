@@ -31,6 +31,11 @@ export function Standings({ standings, final = false }: { standings: Standing[];
   return <div className="match-standings"><table><caption className="sr-only">{final ? 'Final standings' : 'Cumulative leaderboard'}. Total points across all completed rounds.</caption><thead><tr><th scope="col">Rank</th><th scope="col">Player</th><th scope="col">{final ? 'Last round' : 'This round'}</th><th scope="col">Total</th></tr></thead><tbody>{standings.map((row, index) => <tr key={row.entrant.id} className={row.entrant.isYou ? 'is-you' : undefined}><td><span className={`standings-place place-${index + 1}`}>{index + 1}</span></td><th scope="row"><div><AvatarPreview avatar={row.entrant.profile.avatar}/><span>{row.entrant.profile.username}{row.entrant.isYou && <small> · you</small>}</span></div></th><td>+{row.added.toLocaleString()}</td><td><strong>{row.total.toLocaleString()}</strong></td></tr>)}</tbody></table></div>;
 }
 
+const confettiSeed = (index: number, salt: number) => {
+  const x = Math.sin(index * 12.9898 + salt * 78.233) * 43758.5453;
+  return x - Math.floor(x);
+};
+
 export function FinalPodium({ standings }: { standings: Standing[] }) {
   const ownRank = standings.findIndex(row => row.entrant.isYou);
   const podiumSize = Math.min(3, standings.length);
