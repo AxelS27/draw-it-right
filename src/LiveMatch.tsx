@@ -205,7 +205,7 @@ export function LiveMatch({ code, uid, isHost = false, hostInLobby = false, room
       {state.phase === 'final' && (
         <div className="match-actions">
           <div className="match-action-buttons">
-            <button className={!roomClosed ? 'room-secondary' : 'room-primary'} data-sound="close" onClick={isHost ? onFinish : onLeave}>Leave room</button>
+            <button className="room-secondary match-leave-button" data-sound="close" onClick={isHost ? onFinish : onLeave}>Leave room</button>
             {!roomClosed && (
               <button className="room-primary" disabled={rematching || (!isHost && !hostInLobby)} onClick={() => {
                 setRematching(true);
