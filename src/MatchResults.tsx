@@ -41,18 +41,21 @@ export function FinalPodium({ standings }: { standings: Standing[] }) {
   const podiumSize = Math.min(3, standings.length);
   const championDelay = podiumSize > 1 ? 3 + (podiumSize - 1) * 2 : 3;
   const reducedMotion = useReducedMotion();
-  const [cue, setCue] = useState<'intro' | 'suspense' | 'winner'>('intro');
+  const [cue, setCue] = useState<'intro' | 'third' | 'second' | 'suspense' | 'winner'>('intro');
   const instant = reducedMotion;
   const revealed = instant || cue === 'winner';
   useEffect(() => {
     if (instant) return;
-    const suspense = window.setTimeout(() => {
+    const timers: number[] = [];
+    if (podiumSize >= 3) timers.push(window.setTimeout(() => setCue('third'), 800));
+    if (podiumSize >= 2) timers.push(window.setTimeout(() => setCue('second'), (podiumSize === 3 ? 2.8 : 0.8) * 1000));
+    timers.push(window.setTimeout(() => {
       setCue('suspense');
       gameAudio.play('drumroll');
-    }, (championDelay - 2.5) * 1000);
-    const winner = window.setTimeout(() => setCue('winner'), championDelay * 1000);
-    return () => { window.clearTimeout(suspense); window.clearTimeout(winner); };
-  }, [championDelay, instant]);
+    }, (championDelay - 2.5) * 1000));
+    timers.push(window.setTimeout(() => setCue('winner'), championDelay * 1000));
+    return () => timers.forEach(t => window.clearTimeout(t));
+  }, [championDelay, podiumSize, instant]);
   useEffect(() => {
     if (instant) return;
     const entrance = window.setTimeout(() => gameAudio.play('podium'), 0);
@@ -78,7 +81,12 @@ export function FinalPodium({ standings }: { standings: Standing[] }) {
       const h = 8 + Math.round(confettiSeed(index, 8) * 10);
       return <i key={index} style={{ left: `${left.toFixed(2)}%`, width: `${w}px`, height: `${h}px`, backgroundColor: ['#ffdf91', '#91d7c5', '#edb4cf', '#b9c5ff', '#ff9f7f'][index % 5], '--fall-delay': `${delay.toFixed(2)}s`, '--fall-dur': `${dur.toFixed(2)}s`, '--drift': `${drift.toFixed(0)}px`, '--spin': `${spin}deg` } as CSSProperties}/>;
     })}</div>
-    <div className="match-final-heading"><span>{revealed ? '🏆 MEET YOUR CHAMPION' : 'THE FINAL REVEAL'}</span><h2 aria-live="polite">{revealed ? 'We have a champion!' : cue === 'suspense' ? '🥁 Drumroll please…' : 'Every point led to this.'}</h2><div className="match-reveal-cue">{revealed ? 'A huge round of applause for our artists!' : cue === 'suspense' ? 'Hold your breath… the #1 artist is…' : 'The podium awaits.'}</div><p className="match-final-summary">You finished #{ownRank + 1} with {standings[ownRank]?.total.toLocaleString()} points.</p></div>
+    <div className="match-final-heading">
+      <span>{revealed ? '🏆 MEET YOUR CHAMPION' : cue === 'third' ? '🥉 3RD PLACE' : cue === 'second' ? '🥈 2ND PLACE' : cue === 'suspense' ? '🏆 FINAL MOMENT' : 'THE FINAL REVEAL'}</span>
+      <h2 aria-live="polite">{revealed ? 'We have a champion!' : cue === 'third' ? 'Claiming the bronze…' : cue === 'second' ? 'So close to the crown…' : cue === 'suspense' ? '🥁 Drumroll please…' : 'Every point led to this.'}</h2>
+      <div className="match-reveal-cue">{revealed ? 'A huge round of applause for our artists!' : cue === 'third' ? 'Here comes #3 on the podium!' : cue === 'second' ? 'Taking #2 — only one spot left!' : cue === 'suspense' ? 'Hold your breath… the #1 artist is…' : 'Who made it to the podium?'}</div>
+      <p className="match-final-summary">You finished #{ownRank + 1} with {standings[ownRank]?.total.toLocaleString()} points.</p>
+    </div>
     <div className="match-podium">{standings.slice(0, 3).map((row, index) => <article key={row.entrant.id} className={`match-podium-player podium-${index + 1}`} style={{ '--reveal-delay': `${index === 0 ? championDelay : 1 + (podiumSize - 1 - index) * 2}s` } as CSSProperties}>{index === 0 && <span className="match-champion-crown" aria-label="Champion"><Crown size={32}/></span>}<AvatarPreview avatar={row.entrant.profile.avatar}/><h3>{row.entrant.profile.username}{row.entrant.isYou && <small> · you</small>}</h3><strong>{row.total.toLocaleString()} pts</strong><div className={`place-${index + 1}`}>#{index + 1}</div></article>)}</div>
     <div className="match-final-summary">
       <div className="match-gallery-heading"><h3>Final standings</h3><span>Everyone made their mark.</span></div>
