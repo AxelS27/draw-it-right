@@ -4,7 +4,7 @@ import { auth } from './firebase';
 export const colors = {
   mint: '#9cd7bd', gold: '#f5cf78', rose: '#eab5bf', blue: '#9bc8e8',
   lilac: '#c5b3e6', peach: '#f3b58f', cream: '#f4e4bc', teal: '#71c8c4',
-  coral: '#f4978e', sky: '#a2d2ff', rainbow: 'url(#avatar-rainbow)',
+  coral: '#f4978e', sky: '#a2d2ff', rainbow: '#c5b3e6',
 };
 const choices = {
   base: ['bean', 'cat', 'bear', 'bunny', 'blob', 'robot'],

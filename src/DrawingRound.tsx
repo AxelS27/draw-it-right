@@ -48,6 +48,15 @@ type LiveRound = {
   onEventChoice?: (payload: EventChoicePayload) => Promise<void>;
   onSubmit: (image: string) => Promise<void>; onDraft: (image: string | null) => Promise<LivePrediction | null | void>;
 };
+const pickThree = <T,>(items: readonly T[]): T[] => {
+  const pool = [...items];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j]!, pool[i]!];
+  }
+  return pool.slice(0, 3);
+};
+
 type Props = { options: RoomOptions; round: number; prompt: string; messages: ChatMessage[]; onSend: (text: string) => void | Promise<void>; onBack: () => void; onSubmit: (image: string, early: boolean) => void; live?: LiveRound };
 export function DrawingRound({ options, round, prompt, messages, onSend, onBack, onSubmit, live }: Props) {
   const [startedAt] = useState(() => Date.now());
@@ -60,22 +69,12 @@ export function DrawingRound({ options, round, prompt, messages, onSend, onBack,
   const [eventDismissed, setEventDismissed] = useState(false);
   const [eventBusy, setEventBusy] = useState(false);
   const [eventMode, setEventMode] = useState<'personal' | 'all' | null>(null);
-  const [personalAttackChoices] = useState<AttackType[]>(() => {
-    const pool: AttackType[] = ['upside_down', 'shake', 'no_undo', 'tiny_brush', 'ghost_ink', 'mirror_x'];
-    for (let i = pool.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [pool[i], pool[j]] = [pool[j]!, pool[i]!];
-    }
-    return pool.slice(0, 3);
-  });
-  const [allTwistChoices] = useState<Exclude<RoundEvent, 'normal'>[]>(() => {
-    const pool: Exclude<RoundEvent, 'normal'>[] = ['upside_down', 'shake', 'tiny_brush', 'ghost_ink', 'mirror_x', 'double_points', 'precision', 'fat_brush', 'no_undo'];
-    for (let i = pool.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [pool[i], pool[j]] = [pool[j]!, pool[i]!];
-    }
-    return pool.slice(0, 3);
-  });
+  const [personalAttackChoices] = useState<AttackType[]>(() =>
+    pickThree<AttackType>(['upside_down', 'shake', 'no_undo', 'tiny_brush', 'ghost_ink', 'mirror_x'])
+  );
+  const [allTwistChoices] = useState<Exclude<RoundEvent, 'normal'>[]>(() =>
+    pickThree<Exclude<RoundEvent, 'normal'>>(['upside_down', 'shake', 'tiny_brush', 'ghost_ink', 'mirror_x', 'double_points', 'precision', 'fat_brush', 'no_undo'])
+  );
   const [banner, setBanner] = useState<EventAnnouncementBanner | null>(null);
   const seenAnnouncements = useRef(0);
   const liveRef = useRef(live);
