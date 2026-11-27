@@ -8,7 +8,7 @@ const wobbleSize = () => 2 + Math.round((0.5 + 0.5 * Math.sin(performance.now() 
 
 export type DrawingCanvasHandle = { snapshot: (format?: 'png' | 'jpeg') => string; hasDrawing: () => boolean };
 
-export function DrawingCanvas({ locked, ref, onEmpty, noUndo = false, wobbleBrush = false, invisibleInk = false, canvasClassName, flipped = false, shaking = false, mirrored = false, ghost = false }: { locked: boolean; ref?: Ref<DrawingCanvasHandle>; onEmpty?: () => void; noUndo?: boolean; wobbleBrush?: boolean; invisibleInk?: boolean; canvasClassName?: string; flipped?: boolean; shaking?: boolean; mirrored?: boolean; ghost?: boolean }) {
+export function DrawingCanvas({ locked, ref, onEmpty, noUndo = false, wobbleBrush = false, invisibleInk = false, lineOnly = false, canvasClassName, flipped = false, shaking = false, mirrored = false, ghost = false }: { locked: boolean; ref?: Ref<DrawingCanvasHandle>; onEmpty?: () => void; noUndo?: boolean; wobbleBrush?: boolean; invisibleInk?: boolean; lineOnly?: boolean; canvasClassName?: string; flipped?: boolean; shaking?: boolean; mirrored?: boolean; ghost?: boolean }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const strokes = useRef<Stroke[]>([]);
   const undone = useRef<Stroke[]>([]);
@@ -16,7 +16,8 @@ export function DrawingCanvas({ locked, ref, onEmpty, noUndo = false, wobbleBrus
   const pointer = useRef<number | null>(null);
   const [size, setSize] = useState(8);
   const [tool, setTool] = useState<'brush' | 'line' | 'eraser'>('brush');
-  const eraser = !noUndo && tool === 'eraser';
+  const eraser = !noUndo && !lineOnly && tool === 'eraser';
+  const isLine = lineOnly || tool === 'line';
   const [canvasScale, setCanvasScale] = useState(1);
   const eraserDiameter = Math.max(1, size * 3 * canvasScale);
   const cursorSize = Math.ceil(eraserDiameter / 2 + 2) * 2;
@@ -142,8 +143,8 @@ export function DrawingCanvas({ locked, ref, onEmpty, noUndo = false, wobbleBrus
       points: [point(event)],
       color: strokeColor,
       size: strokeSize,
-      line: tool === 'line',
-      ...(wobbleBrush && !eraser && tool !== 'line' ? { sizes: [strokeSize] } : {}),
+      line: isLine,
+      ...(wobbleBrush && !eraser && !isLine ? { sizes: [strokeSize] } : {}),
     };
     paint();
     syncHistory();
@@ -170,7 +171,7 @@ export function DrawingCanvas({ locked, ref, onEmpty, noUndo = false, wobbleBrus
   return <>
     <div className={`drawing-paper${canvasClassName ? ` ${canvasClassName}` : ''}`}><canvas ref={canvas} width={800} height={500} style={{ cursor }} aria-label="Drawing canvas. Use a mouse, touch, or pen to draw." onPointerDown={down} onPointerMove={move} onPointerUp={event => { if (pointer.current === event.pointerId) { move(event); finish(); } }} onPointerCancel={event => { if (pointer.current === event.pointerId) finish(); }} onLostPointerCapture={event => { if (pointer.current === event.pointerId) finish(); }}/></div>
     <fieldset className="drawing-tools" disabled={locked} aria-label="Drawing tools">
-      <div className="drawing-tool-group"><button type="button" title="Brush" aria-label="Brush" aria-pressed={tool === 'brush' || (noUndo && tool === 'eraser')} onClick={() => setTool('brush')}><Pencil size={19}/></button><button type="button" title="Straight line" aria-label="Straight line" aria-pressed={tool === 'line'} onClick={() => setTool('line')}><Minus size={19}/></button><button type="button" title="Eraser" aria-label="Eraser" disabled={noUndo} aria-pressed={eraser} onClick={() => setTool('eraser')}><Eraser size={19}/></button></div>
+      <div className="drawing-tool-group"><button type="button" title="Brush" aria-label="Brush" disabled={lineOnly} aria-pressed={!lineOnly && (tool === 'brush' || (noUndo && tool === 'eraser'))} onClick={() => setTool('brush')}><Pencil size={19}/></button><button type="button" title="Straight line" aria-label="Straight line" aria-pressed={isLine} onClick={() => setTool('line')}><Minus size={19}/></button><button type="button" title="Eraser" aria-label="Eraser" disabled={noUndo || lineOnly} aria-pressed={eraser} onClick={() => setTool('eraser')}><Eraser size={19}/></button></div>
       <div className="drawing-tool-group" role="group" aria-label="Brush size">{[4, 8, 16].map((value, index) => <button key={value} type="button" aria-label={`${['Small', 'Medium', 'Large'][index]} brush`} disabled={wobbleBrush} aria-pressed={!wobbleBrush && size === value} onClick={() => setSize(value)}><span className="drawing-size-dot" style={{ width: value + 2, height: value + 2 }}/></button>)}</div>
       <div className="drawing-tool-group"><button type="button" aria-label="Undo" title="Undo" disabled={noUndo || !history.undo} onClick={() => changeHistory(false)}><Undo2 size={19}/></button><button type="button" aria-label="Redo" title="Redo" disabled={noUndo || !history.redo} onClick={() => changeHistory(true)}><Redo2 size={19}/></button><button type="button" aria-label="Clear canvas" title="Clear canvas" disabled={noUndo || !history.undo} onClick={() => clearDialog.current?.showModal()}><Trash2 size={19}/></button></div>
     </fieldset>
