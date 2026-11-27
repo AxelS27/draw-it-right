@@ -6,12 +6,14 @@ import { roomError, sendMessage, watchMessages, type LiveMessage, type Room, typ
 import { RoomChat, useUnreadChat, type ChatMessage } from './RoomChat';
 import { RoomReactions } from './RoomReactions';
 import { nextHost } from './room-order';
+import { matchRequest } from './match-api';
 import { useAudioScene } from './useAudio';
 import './waiting-room.css';
 
 type Props = { room: Room; uid: string; code: string; duration: string; busy: boolean; notice: string; onEdit: () => void; onCopy: (value: string, label: string) => Promise<void>; onAction: (action: 'settings' | 'lock' | 'start' | 'leave' | 'remove' | 'transfer' | 'close', value?: RoomOptions | string) => void };
 export function WaitingRoom({ room, uid, code, duration, busy, notice, onEdit, onCopy, onAction }: Props) {
   useAudioScene('waiting', 1);
+  useEffect(() => { void matchRequest('/health').catch(() => undefined); }, []);
   const grid = useRef<HTMLDivElement>(null);
   const playerDialog = useRef<HTMLDialogElement>(null);
   const qrDialog = useRef<HTMLDialogElement>(null);

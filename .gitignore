@@ -3,7 +3,8 @@ model-service/*.download
 model-service/.local-secret
 model-service/cloudflared.exe
 model-service/.venv/
-model-service/__pycache__/
+__pycache__/
+*.pyc
 worker/.dev.vars*
 node_modules/
 dist/

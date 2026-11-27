@@ -18,6 +18,7 @@ export const EVENT_LABELS: Record<Exclude<RoundEvent, 'normal'>, { badge: string
   tiny_brush: { badge: '🎢 WOBBLE PEN ALL', hint: 'Brush size swings big & small!' },
   ghost_ink: { badge: '👻 GHOST INK ALL', hint: 'Everyone’s canvas fades in and out!' },
   mirror_x: { badge: '🪞 MIRROR CHAOS', hint: 'Everyone’s canvas is mirrored!' },
+  line_only: { badge: '📏 LINES ONLY', hint: 'Straight lines only! No freehand brush!' },
 };
 
 export const ATTACK_LABELS: Record<AttackType, string> = {
@@ -27,6 +28,7 @@ export const ATTACK_LABELS: Record<AttackType, string> = {
   tiny_brush: '🎢 Wobble Pen',
   ghost_ink: '👻 Ghost Ink',
   mirror_x: '🪞 Mirror Mode',
+  line_only: '📏 Lines Only',
 };
 
 const ATTACK_CARD_HINTS: Record<AttackType, string> = {
@@ -36,6 +38,7 @@ const ATTACK_CARD_HINTS: Record<AttackType, string> = {
   tiny_brush: 'Brush size keeps swinging big & small!',
   ghost_ink: 'Makes their canvas fade like a ghost!',
   mirror_x: 'Mirrors their canvas left-to-right!',
+  line_only: 'Forces straight lines only! No brush!',
 };
 
 export type LivePrediction = { class: string; confidence: number; targetConfidence: number; points: number };
@@ -48,6 +51,15 @@ type LiveRound = {
   onEventChoice?: (payload: EventChoicePayload) => Promise<void>;
   onSubmit: (image: string) => Promise<void>; onDraft: (image: string | null) => Promise<LivePrediction | null | void>;
 };
+const pickThree = <T,>(items: readonly T[]): T[] => {
+  const pool = [...items];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j]!, pool[i]!];
+  }
+  return pool.slice(0, 3);
+};
+
 type Props = { options: RoomOptions; round: number; prompt: string; messages: ChatMessage[]; onSend: (text: string) => void | Promise<void>; onBack: () => void; onSubmit: (image: string, early: boolean) => void; live?: LiveRound };
 export function DrawingRound({ options, round, prompt, messages, onSend, onBack, onSubmit, live }: Props) {
   const [startedAt] = useState(() => Date.now());
@@ -60,22 +72,12 @@ export function DrawingRound({ options, round, prompt, messages, onSend, onBack,
   const [eventDismissed, setEventDismissed] = useState(false);
   const [eventBusy, setEventBusy] = useState(false);
   const [eventMode, setEventMode] = useState<'personal' | 'all' | null>(null);
-  const [personalAttackChoices] = useState<AttackType[]>(() => {
-    const pool: AttackType[] = ['upside_down', 'shake', 'no_undo', 'tiny_brush', 'ghost_ink', 'mirror_x'];
-    for (let i = pool.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [pool[i], pool[j]] = [pool[j]!, pool[i]!];
-    }
-    return pool.slice(0, 3);
-  });
-  const [allTwistChoices] = useState<Exclude<RoundEvent, 'normal'>[]>(() => {
-    const pool: Exclude<RoundEvent, 'normal'>[] = ['upside_down', 'shake', 'tiny_brush', 'ghost_ink', 'mirror_x', 'double_points', 'precision', 'fat_brush', 'no_undo'];
-    for (let i = pool.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [pool[i], pool[j]] = [pool[j]!, pool[i]!];
-    }
-    return pool.slice(0, 3);
-  });
+  const [personalAttackChoices] = useState<AttackType[]>(() =>
+    pickThree<AttackType>(['upside_down', 'shake', 'no_undo', 'tiny_brush', 'ghost_ink', 'mirror_x', 'line_only'])
+  );
+  const [allTwistChoices] = useState<Exclude<RoundEvent, 'normal'>[]>(() =>
+    pickThree<Exclude<RoundEvent, 'normal'>>(['upside_down', 'shake', 'tiny_brush', 'ghost_ink', 'mirror_x', 'double_points', 'precision', 'fat_brush', 'no_undo', 'line_only'])
+  );
   const [banner, setBanner] = useState<EventAnnouncementBanner | null>(null);
   const seenAnnouncements = useRef(0);
   const liveRef = useRef(live);
@@ -145,6 +147,7 @@ export function DrawingRound({ options, round, prompt, messages, onSend, onBack,
   const noUndo = roundEvent === 'no_undo' || curse?.type === 'no_undo';
   const wobbleBrush = roundEvent === 'tiny_brush' || curse?.type === 'tiny_brush';
   const invisibleInk = roundEvent === 'fat_brush';
+  const lineOnly = roundEvent === 'line_only' || curse?.type === 'line_only';
   const isFlipped = roundEvent === 'upside_down' || curse?.type === 'upside_down';
   const isShaking = roundEvent === 'shake' || curse?.type === 'shake';
   const isMirrored = roundEvent === 'mirror_x' || curse?.type === 'mirror_x';
@@ -196,7 +199,7 @@ export function DrawingRound({ options, round, prompt, messages, onSend, onBack,
           </div>
         )}
         <div className="drawing-editor" onPointerUp={scheduleStrokeCheck}>
-          <DrawingCanvas ref={canvas} locked={revealing || expired || showEventCards} noUndo={noUndo} wobbleBrush={wobbleBrush} invisibleInk={invisibleInk} canvasClassName={canvasClassName} flipped={isFlipped} shaking={isShaking} mirrored={isMirrored} ghost={isGhost} onEmpty={live ? () => { setLivePrediction(null); if (savedDraft.current) void live.onDraft(null).catch(() => { /* The interval retries. */ }); } : undefined}/>
+          <DrawingCanvas ref={canvas} locked={revealing || expired || showEventCards} noUndo={noUndo} wobbleBrush={wobbleBrush} invisibleInk={invisibleInk} lineOnly={lineOnly} canvasClassName={canvasClassName} flipped={isFlipped} shaking={isShaking} mirrored={isMirrored} ghost={isGhost} onEmpty={live ? () => { setLivePrediction(null); if (savedDraft.current) void live.onDraft(null).catch(() => { /* The interval retries. */ }); } : undefined}/>
           {banner && !revealing && (
             <div className={`drawing-center-banner${banner.isYouTarget ? ' is-victim' : banner.kind === 'sabotage' ? ' is-sabotage' : ' is-twist'}`} role="status">
               <strong>{banner.text}</strong>

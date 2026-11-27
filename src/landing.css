@@ -165,6 +165,12 @@ button:disabled { cursor: wait; opacity: .65; transform: none; }
   .spark-gold { right: 20%; top: 23%; font-size: 21px; }
   .join-main { padding-top: 65px; padding-bottom: 200px; }
 }
+.how-to-play-link { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; padding: 8px 14px; border-radius: 999px; background: #ffffff12; border: 1px solid #ffffff26; color: #e2ecef; font-size: 12px; font-weight: 600; }
+.how-to-play-link:hover { background: #ffffff22; }
+.howto-steps { margin: 18px 0 22px; padding-left: 20px; text-align: left; display: grid; gap: 12px; font-size: 13px; color: #315b66; }
+.howto-steps li strong { display: block; font-weight: 700; margin-bottom: 2px; }
+.howto-steps li span { color: #6a8589; font-size: 12px; line-height: 1.5; }
+.howto-done { width: 100%; justify-content: center; }
 @media (max-width: 440px) {
   .header { justify-content: center; gap: 10px; padding-top: 12px; padding-bottom: 10px; }
   .header-actions { width: 100%; justify-content: center; }

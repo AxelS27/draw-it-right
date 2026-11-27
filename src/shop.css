@@ -50,7 +50,6 @@ html:has(.shop-page) { scrollbar-gutter: stable; }
 .shop-try-button:hover:not(:disabled) { background: #ffdf98; }
 .shop-try-button:disabled { background: #e1ecdf; border-color: #c4d5c0; color: #4f7767; opacity: 1; cursor: default; }
 .shop-try-button.is-unaffordable:disabled { background: #ffe0d9; border-color: #f3aba0; color: #9e332d; cursor: not-allowed; }
-.shop-reset { display: flex; align-items: center; justify-content: center; gap: 7px; width: 100%; min-height: 44px; margin-top: 5px; font-size: 12px; color: #607b7b; background: transparent; }
 .shop-local-note { padding-top: 12px; border-top: 1px solid #e1e6d9; font-size: 10px; color: #607b7b; line-height: 1.7; text-align: center; }
 .shop-status { font-size: 11px; color: #406e69; line-height: 1.6; }
 .shop-status:not(:empty) { margin-top: 10px; }

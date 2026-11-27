@@ -13,7 +13,7 @@ const messagesRef = (code: string) => collection(roomRef(code), 'messages');
 const reactionsRef = (code: string) => collection(roomRef(code), 'reactions');
 export const reactionSymbols = ['👋', '😂', '🔥', '❤️', '🎉'] as const;
 export type ReactionSymbol = typeof reactionSymbols[number];
-export type LiveMessage = { id: string; sender: string; text: string };
+export type LiveMessage = { id: string; sender: string; text: string; createdAt?: number };
 const validCode = (code: string) => /^\d{6}$/.test(code);
 const codeCandidate = () => String(crypto.getRandomValues(new Uint32Array(1))[0]! % 1_000_000).padStart(6, '0');
 
@@ -162,7 +162,11 @@ export async function sendReaction(code: string, uid: string, symbol: ReactionSy
 
 export function watchMessages(code: string, onMessages: (messages: LiveMessage[]) => void, onError: (message: string) => void): Unsubscribe {
   return onSnapshot(query(messagesRef(code), orderBy('createdAt', 'desc'), limit(100)), snapshot => {
-    onMessages(snapshot.docs.map(message => ({ id: message.id, sender: message.data().sender as string, text: message.data().text as string })).reverse());
+    onMessages(snapshot.docs.map(message => {
+      const data = message.data();
+      const createdAt = typeof data.createdAt?.toMillis === 'function' ? data.createdAt.toMillis() as number : undefined;
+      return { id: message.id, sender: data.sender as string, text: data.text as string, createdAt };
+    }).reverse());
   }, error => onError(roomError(error)));
 }
 

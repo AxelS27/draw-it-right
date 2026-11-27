@@ -46,7 +46,6 @@
 .waiting-crew-footer > span:first-child { display: flex; align-items: center; gap: 5px; color: #ffdf98; }
 .waiting-reaction-dock { display: flex; align-items: center; justify-content: center; flex-shrink: 0; align-self: center; margin-top: 12px; padding: 6px 10px; border: 1px solid #ffffff30; border-radius: 20px; background: #183d5380; }
 .waiting-reaction-buttons { display: flex; gap: 8px; }
-.waiting-reaction-buttons button { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 14px; border: 1px solid #ffffff25; background: #fff4d9; font-size: 26px; transition: transform .15s, background .15s; }
 .waiting-reaction-buttons button { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 12px; background: #fff9ef; font-size: 26px; user-select: none; transition: transform .18s cubic-bezier(0.34, 1.56, 0.64, 1), background .18s ease; }
 .waiting-reaction-buttons button:hover { background: #ffdf91; transform: translateY(-3px) scale(1.06); }
 .waiting-reaction-buttons button:active { transform: scale(.9); }
