@@ -1,8 +1,8 @@
 import { auth } from './firebase';
 import type { Profile } from './profile';
 
-export type RoundEvent = 'normal' | 'speed_blitz' | 'double_points' | 'no_undo' | 'fat_brush' | 'precision' | 'upside_down' | 'shake' | 'tiny_brush' | 'ghost_ink' | 'mirror_x' | 'line_only';
-export type AttackType = 'upside_down' | 'shake' | 'no_undo' | 'tiny_brush' | 'ghost_ink' | 'mirror_x' | 'line_only';
+export type RoundEvent = 'normal' | 'speed_blitz' | 'double_points' | 'no_undo' | 'fat_brush' | 'precision' | 'upside_down' | 'shake' | 'tiny_brush' | 'ghost_ink' | 'mirror_x' | 'line_only' | 'one_line';
+export type AttackType = 'upside_down' | 'shake' | 'no_undo' | 'tiny_brush' | 'ghost_ink' | 'mirror_x' | 'line_only' | 'one_line';
 export type EventOfferKind = 'sabotage' | 'round_chaos';
 export type ActiveAttack = { type: AttackType; from: string };
 export type EventAnnouncement = { round: number; from: string; kind: EventOfferKind; detail: string; at?: number };

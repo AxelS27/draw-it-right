@@ -21,6 +21,7 @@ export const EVENT_LABELS: Record<Exclude<RoundEvent, 'normal'>, { badge: string
   ghost_ink: { badge: '👻 GHOST INK ALL', hint: 'Everyone’s canvas fades in and out!' },
   mirror_x: { badge: '🪞 MIRROR CHAOS', hint: 'Everyone’s canvas is mirrored!' },
   line_only: { badge: '📏 LINES ONLY', hint: 'Straight lines only! No freehand brush!' },
+  one_line: { badge: '✍️ ONE LINE', hint: 'One single stroke only! No lifting, eraser, or line!' },
 };
 
 export const ATTACK_LABELS: Record<AttackType, string> = {
@@ -31,6 +32,7 @@ export const ATTACK_LABELS: Record<AttackType, string> = {
   ghost_ink: '👻 Ghost Ink',
   mirror_x: '🪞 Mirror Mode',
   line_only: '📏 Lines Only',
+  one_line: '✍️ One Line',
 };
 
 const ATTACK_CARD_HINTS: Record<AttackType, string> = {
@@ -41,6 +43,7 @@ const ATTACK_CARD_HINTS: Record<AttackType, string> = {
   ghost_ink: 'Makes their canvas fade like a ghost!',
   mirror_x: 'Mirrors their canvas left-to-right!',
   line_only: 'Forces straight lines only! No brush!',
+  one_line: 'One continuous brush stroke only! No eraser or line!',
 };
 
 export type LivePrediction = { class: string; confidence: number; targetConfidence: number; points: number };
@@ -76,10 +79,10 @@ export function DrawingRound({ options, round, prompt, messages, onSend, onBack,
   const [eventBusy, setEventBusy] = useState(false);
   const [eventMode, setEventMode] = useState<'personal' | 'all' | null>(null);
   const [personalAttackChoices] = useState<AttackType[]>(() =>
-    pickThree<AttackType>(['upside_down', 'shake', 'no_undo', 'tiny_brush', 'ghost_ink', 'mirror_x', 'line_only'])
+    pickThree<AttackType>(['upside_down', 'shake', 'no_undo', 'tiny_brush', 'ghost_ink', 'mirror_x', 'line_only', 'one_line'])
   );
   const [allTwistChoices] = useState<Exclude<RoundEvent, 'normal'>[]>(() =>
-    pickThree<Exclude<RoundEvent, 'normal'>>(['upside_down', 'shake', 'tiny_brush', 'ghost_ink', 'mirror_x', 'double_points', 'precision', 'fat_brush', 'no_undo', 'line_only'])
+    pickThree<Exclude<RoundEvent, 'normal'>>(['upside_down', 'shake', 'tiny_brush', 'ghost_ink', 'mirror_x', 'double_points', 'precision', 'fat_brush', 'no_undo', 'line_only', 'one_line'])
   );
   const [banner, setBanner] = useState<EventAnnouncementBanner | null>(null);
   const seenAnnouncements = useRef(0);
@@ -151,6 +154,7 @@ export function DrawingRound({ options, round, prompt, messages, onSend, onBack,
   const wobbleBrush = roundEvent === 'tiny_brush' || curse?.type === 'tiny_brush';
   const invisibleInk = roundEvent === 'fat_brush';
   const lineOnly = roundEvent === 'line_only' || curse?.type === 'line_only';
+  const oneLine = roundEvent === 'one_line' || curse?.type === 'one_line';
   const isFlipped = roundEvent === 'upside_down' || curse?.type === 'upside_down';
   const isShaking = roundEvent === 'shake' || curse?.type === 'shake';
   const isMirrored = roundEvent === 'mirror_x' || curse?.type === 'mirror_x';
@@ -203,7 +207,7 @@ export function DrawingRound({ options, round, prompt, messages, onSend, onBack,
           </div>
         )}
         <div className="drawing-editor" onPointerUp={scheduleStrokeCheck}>
-          <DrawingCanvas ref={canvas} locked={revealing || expired || showEventCards} noUndo={noUndo} wobbleBrush={wobbleBrush} invisibleInk={invisibleInk} lineOnly={lineOnly} canvasClassName={canvasClassName} flipped={isFlipped} shaking={isShaking} mirrored={isMirrored} ghost={isGhost} onEmpty={live ? () => { setLivePrediction(null); if (savedDraft.current) void live.onDraft(null).catch(() => { /* The interval retries. */ }); } : undefined}/>
+          <DrawingCanvas ref={canvas} locked={revealing || expired || showEventCards} noUndo={noUndo} wobbleBrush={wobbleBrush} invisibleInk={invisibleInk} lineOnly={lineOnly} oneLine={oneLine} canvasClassName={canvasClassName} flipped={isFlipped} shaking={isShaking} mirrored={isMirrored} ghost={isGhost} onEmpty={live ? () => { setLivePrediction(null); if (savedDraft.current) void live.onDraft(null).catch(() => { /* The interval retries. */ }); } : undefined}/>
           {banner && !revealing && (
             <div className={`drawing-center-banner${banner.isYouTarget ? ' is-victim' : banner.kind === 'sabotage' ? ' is-sabotage' : ' is-twist'}`} role="status">
               <strong>{banner.text}</strong>
