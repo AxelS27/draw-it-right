@@ -77,6 +77,8 @@
 .waiting-settings strong > span { margin: 0 6px; color: #a6c0c7; }
 .waiting-settings small { display: block; margin-top: 4px; font-size: 10px; color: #c2d7df; }
 .waiting-start { display: flex; align-items: center; gap: 10px; }
+.waiting-leave-room { background: #ffe0d9; border: 1px solid #f3aba0; border-bottom: 3px solid #e08d80; color: #9e332d; }
+.waiting-leave-room:hover:not(:disabled) { background: #ffece8; }
 .waiting-end-room { background: #e05a54; border: 1px solid #c7433d; border-bottom: 3px solid #a9322d; color: #fff9ef; }
 .waiting-end-room:hover:not(:disabled) { background: #ec6d67; }
 .waiting-end-room:disabled { opacity: .5; }
