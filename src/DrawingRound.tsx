@@ -28,6 +28,7 @@ export const ATTACK_LABELS: Record<AttackType, string> = {
   tiny_brush: '🎢 Wobble Pen',
   ghost_ink: '👻 Ghost Ink',
   mirror_x: '🪞 Mirror Mode',
+  line_only: '📏 Lines Only',
 };
 
 const ATTACK_CARD_HINTS: Record<AttackType, string> = {
@@ -37,6 +38,7 @@ const ATTACK_CARD_HINTS: Record<AttackType, string> = {
   tiny_brush: 'Brush size keeps swinging big & small!',
   ghost_ink: 'Makes their canvas fade like a ghost!',
   mirror_x: 'Mirrors their canvas left-to-right!',
+  line_only: 'Forces straight lines only! No brush!',
 };
 
 export type LivePrediction = { class: string; confidence: number; targetConfidence: number; points: number };
@@ -71,7 +73,7 @@ export function DrawingRound({ options, round, prompt, messages, onSend, onBack,
   const [eventBusy, setEventBusy] = useState(false);
   const [eventMode, setEventMode] = useState<'personal' | 'all' | null>(null);
   const [personalAttackChoices] = useState<AttackType[]>(() =>
-    pickThree<AttackType>(['upside_down', 'shake', 'no_undo', 'tiny_brush', 'ghost_ink', 'mirror_x'])
+    pickThree<AttackType>(['upside_down', 'shake', 'no_undo', 'tiny_brush', 'ghost_ink', 'mirror_x', 'line_only'])
   );
   const [allTwistChoices] = useState<Exclude<RoundEvent, 'normal'>[]>(() =>
     pickThree<Exclude<RoundEvent, 'normal'>>(['upside_down', 'shake', 'tiny_brush', 'ghost_ink', 'mirror_x', 'double_points', 'precision', 'fat_brush', 'no_undo', 'line_only'])
@@ -145,7 +147,7 @@ export function DrawingRound({ options, round, prompt, messages, onSend, onBack,
   const noUndo = roundEvent === 'no_undo' || curse?.type === 'no_undo';
   const wobbleBrush = roundEvent === 'tiny_brush' || curse?.type === 'tiny_brush';
   const invisibleInk = roundEvent === 'fat_brush';
-  const lineOnly = roundEvent === 'line_only';
+  const lineOnly = roundEvent === 'line_only' || curse?.type === 'line_only';
   const isFlipped = roundEvent === 'upside_down' || curse?.type === 'upside_down';
   const isShaking = roundEvent === 'shake' || curse?.type === 'shake';
   const isMirrored = roundEvent === 'mirror_x' || curse?.type === 'mirror_x';

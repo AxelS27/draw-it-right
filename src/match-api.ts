@@ -2,10 +2,10 @@ import { auth } from './firebase';
 import type { Profile } from './profile';
 
 export type RoundEvent = 'normal' | 'speed_blitz' | 'double_points' | 'no_undo' | 'fat_brush' | 'precision' | 'upside_down' | 'shake' | 'tiny_brush' | 'ghost_ink' | 'mirror_x' | 'line_only';
-export type AttackType = 'upside_down' | 'shake' | 'no_undo' | 'tiny_brush' | 'ghost_ink' | 'mirror_x';
+export type AttackType = 'upside_down' | 'shake' | 'no_undo' | 'tiny_brush' | 'ghost_ink' | 'mirror_x' | 'line_only';
 export type EventOfferKind = 'sabotage' | 'round_chaos';
 export type ActiveAttack = { type: AttackType; from: string };
-export type EventAnnouncement = { round: number; from: string; kind: EventOfferKind; detail: string };
+export type EventAnnouncement = { round: number; from: string; kind: EventOfferKind; detail: string; at?: number };
 export type MatchEntry = { points: number; submitted: boolean; prediction: string; confidence?: number; coins: number };
 export type MatchResult = { round: number; prompt: string; entries: Record<string, MatchEntry> };
 export type MatchState = {

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Check, Clock3, LoaderCircle, MessageCircle, Sparkles, Trophy } from 'lucide-react';
+import { ArrowLeft, Check, Clock3, LoaderCircle, MessageCircle, Share2, Sparkles, Trophy } from 'lucide-react';
 import { ATTACK_LABELS, DrawingRound, EVENT_LABELS } from './DrawingRound';
 import { RoomChat, useUnreadChat, type ChatMessage } from './RoomChat';
 import { FinalPodium, RoundGallery, Standings } from './MatchResults';
@@ -24,6 +24,7 @@ export function LiveMatch({ code, uid, isHost = false, hostInLobby = false, room
   const [messages, setMessages] = useState<LiveMessage[]>([]);
   const [chatError, setChatError] = useState('');
   const [rematching, setRematching] = useState(false);
+  const [shared, setShared] = useState(false);
   const chatDialog = useRef<HTMLDialogElement>(null);
   const leaveDialog = useRef<HTMLDialogElement>(null);
   const content = useRef<HTMLDivElement>(null);
@@ -96,27 +97,35 @@ export function LiveMatch({ code, uid, isHost = false, hostInLobby = false, room
   }, [code, state?.session, state?.phase, lastResult]);
 
   const chatMessages: ChatMessage[] = useMemo(() => {
-    const base: ChatMessage[] = messages.map(message => ({ id: message.id, text: message.text, author: state?.players[message.sender]?.username ?? 'Former player', isYou: message.sender === uid, senderId: message.sender }));
-    const logs: ChatMessage[] = (state?.eventLog ?? []).map((item, idx) => {
+    type TimedMessage = { at: number; order: number; msg: ChatMessage };
+    const items: TimedMessage[] = messages.map((message, idx) => ({
+      at: message.createdAt ?? idx,
+      order: idx,
+      msg: { id: message.id, text: message.text, author: state?.players[message.sender]?.username ?? 'Former player', isYou: message.sender === uid, senderId: message.sender },
+    }));
+    const offset = messages.length;
+    (state?.eventLog ?? []).forEach((item, idx) => {
       const fromName = state?.players[item.from]?.username ?? 'Someone';
+      const at = item.at ?? Number.MAX_SAFE_INTEGER;
       if (item.kind === 'sabotage') {
         const [atk, rawTargets = ''] = item.detail.split(':');
         const targetNames = rawTargets.split(',').filter(Boolean).map(id => state?.players[id]?.username ?? 'Player').join(', ');
-        return { id: `event-${item.round}-${idx}`, author: `⚡ Event · R${item.round}`, text: `${fromName} sabotaged ${targetNames} (${ATTACK_LABELS[atk as AttackType] ?? atk})!`, sample: true };
+        items.push({ at, order: offset + idx, msg: { id: `event-${item.round}-${idx}`, author: `⚡ Event · R${item.round}`, text: `${fromName} sabotaged ${targetNames} (${ATTACK_LABELS[atk as AttackType] ?? atk})!`, sample: true } });
+      } else {
+        const ev = EVENT_LABELS[item.detail as Exclude<RoundEvent, 'normal'>];
+        items.push({ at, order: offset + idx, msg: { id: `event-${item.round}-${idx}`, author: `⚡ Event · R${item.round}`, text: `${fromName} activated ${ev?.badge ?? item.detail}${ev?.hint ? ` - ${ev.hint}` : '!'}`, sample: true } });
       }
-      const ev = EVENT_LABELS[item.detail as Exclude<RoundEvent, 'normal'>];
-      return { id: `event-${item.round}-${idx}`, author: `⚡ Event · R${item.round}`, text: `${fromName} activated ${ev?.badge ?? item.detail}${ev?.hint ? ` - ${ev.hint}` : '!'}`, sample: true };
     });
     if (state && state.round > 0) {
       if (state.roundEvent && state.roundEvent !== 'normal' && !(state.eventLog ?? []).some(item => item.round === state.round && item.kind === 'round_chaos' && item.detail === state.roundEvent)) {
         const ev = EVENT_LABELS[state.roundEvent];
-        logs.push({ id: `round-event-${state.session}-${state.round}`, author: `⚡ Event · R${state.round}`, text: `${ev.badge} - ${ev.hint}`, sample: true });
+        items.push({ at: Number.MAX_SAFE_INTEGER, order: offset + 1000, msg: { id: `round-event-${state.session}-${state.round}`, author: `⚡ Event · R${state.round}`, text: `${ev.badge} - ${ev.hint}`, sample: true } });
       }
       if (state.round === state.rounds && state.doublePoints && state.roundEvent !== 'double_points') {
-        logs.push({ id: `finale-2x-${state.session}-${state.round}`, author: `⚡ Event · R${state.round}`, text: '💎 2× POINTS FINALE - Double points for the final round!', sample: true });
+        items.push({ at: Number.MAX_SAFE_INTEGER, order: offset + 1001, msg: { id: `finale-2x-${state.session}-${state.round}`, author: `⚡ Event · R${state.round}`, text: '💎 2× POINTS FINALE - Double points for the final round!', sample: true } });
       }
     }
-    return [...base, ...logs];
+    return items.sort((a, b) => a.at - b.at || a.order - b.order).map(item => item.msg);
   }, [messages, state?.players, state?.eventLog, state?.round, state?.rounds, state?.doublePoints, state?.roundEvent, state?.session, uid]);
   const { unread, openChat, closeChat, onDialogClose } = useUnreadChat(chatMessages, chatDialog);
   const sendChat = async (text: string) => { try { await sendMessage(code, uid, text); } catch (failure) { throw new Error(roomError(failure)); } };
@@ -205,6 +214,12 @@ export function LiveMatch({ code, uid, isHost = false, hostInLobby = false, room
                 {rematching ? 'Returning…' : 'Play Again'}
               </button>
             )}
+            <button type="button" className="room-secondary" onClick={() => {
+              const top = standings.slice(0, 3).map((row, idx) => `${['🥇', '🥈', '🥉'][idx]} ${row.entrant.profile.username} (${row.total.toLocaleString()} pts)`).join(' · ');
+              const meIndex = standings.findIndex(row => row.entrant.isYou);
+              const me = meIndex >= 0 ? ` | My rank: #${meIndex + 1} (${standings[meIndex]!.total.toLocaleString()} pts)` : '';
+              void navigator.clipboard.writeText(`Draw It Right! Final Results: ${top}${me}`).then(() => { setShared(true); window.setTimeout(() => setShared(false), 2200); }).catch(() => undefined);
+            }}><Share2 size={16}/>{shared ? 'Copied!' : 'Share Result'}</button>
             <button className={!roomClosed ? 'room-secondary' : 'room-primary'} data-sound="close" onClick={isHost ? onFinish : onLeave}>Leave room</button>
           </div>
           <span>{roomClosed ? 'Match complete · room closed' : isHost ? 'Play again with the same crew or leave' : hostInLobby ? 'Host is in the room! Click Play Again to join.' : 'Waiting for host to join the room first…'}</span>

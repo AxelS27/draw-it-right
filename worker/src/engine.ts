@@ -16,12 +16,12 @@ export type Player = { username: string; avatar: Record<string, string> };
 export type Entry = { points: number; submitted: boolean; prediction: string; confidence: number; coins: number; remaining: number };
 export type Prediction = { class: string; confidence: number; targetConfidence: number } | null;
 export type RoundEvent = 'normal' | 'speed_blitz' | 'double_points' | 'no_undo' | 'fat_brush' | 'precision' | 'upside_down' | 'shake' | 'tiny_brush' | 'ghost_ink' | 'mirror_x' | 'line_only';
-export type AttackType = 'upside_down' | 'shake' | 'no_undo' | 'tiny_brush' | 'ghost_ink' | 'mirror_x';
+export type AttackType = 'upside_down' | 'shake' | 'no_undo' | 'tiny_brush' | 'ghost_ink' | 'mirror_x' | 'line_only';
 export type EventOfferKind = 'sabotage' | 'round_chaos';
 export type ActiveAttack = { type: AttackType; from: string };
-export type EventAnnouncement = { round: number; from: string; kind: EventOfferKind; detail: string };
+export type EventAnnouncement = { round: number; from: string; kind: EventOfferKind; detail: string; at?: number };
 export const ROUND_EVENTS: readonly Exclude<RoundEvent, 'normal'>[] = ['speed_blitz', 'double_points', 'no_undo', 'fat_brush', 'precision', 'upside_down', 'shake', 'tiny_brush', 'ghost_ink', 'mirror_x', 'line_only'];
-export const ATTACK_TYPES: readonly AttackType[] = ['upside_down', 'shake', 'no_undo', 'tiny_brush', 'ghost_ink', 'mirror_x'];
+export const ATTACK_TYPES: readonly AttackType[] = ['upside_down', 'shake', 'no_undo', 'tiny_brush', 'ghost_ink', 'mirror_x', 'line_only'];
 export type RoundResult = { round: number; prompt: string; entries: Record<string, Entry> };
 export type Match = {
   session: number; phase: Phase; round: number; prompt: string; promptOrder: string[]; deadline: number; rounds: number; timer: number;
@@ -89,7 +89,7 @@ export function applyEventChoice(
         ...match,
         eventOffers: nextOffers,
         pendingAttacks: nextAttacks,
-        eventLog: [...match.eventLog, { round: match.round, from: fromUid, kind: 'sabotage', detail: `${choice.attack}:${targets.join(',')}` }],
+        eventLog: [...match.eventLog, { round: match.round, from: fromUid, kind: 'sabotage', detail: `${choice.attack}:${targets.join(',')}`, at: Date.now() }],
       },
       accepted: true,
     };
@@ -100,7 +100,7 @@ export function applyEventChoice(
       ...match,
       eventOffers: nextOffers,
       roundEvent: choice.roundEvent,
-      eventLog: [...match.eventLog, { round: match.round, from: fromUid, kind: 'round_chaos', detail: choice.roundEvent }],
+      eventLog: [...match.eventLog, { round: match.round, from: fromUid, kind: 'round_chaos', detail: choice.roundEvent, at: Date.now() }],
     },
     accepted: true,
   };
