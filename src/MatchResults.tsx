@@ -36,13 +36,22 @@ const confettiSeed = (index: number, salt: number) => {
   return x - Math.floor(x);
 };
 
-export function FinalPodium({ standings }: { standings: Standing[] }) {
+export function FinalPodium({ standings, podiumKey }: { standings: Standing[]; podiumKey?: string }) {
   const ownRank = standings.findIndex(row => row.entrant.isYou);
   const podiumSize = Math.min(3, standings.length);
   const championDelay = podiumSize === 3 ? 10.5 : podiumSize === 2 ? 7.0 : 4.0;
   const reducedMotion = useReducedMotion();
+  const [alreadySeen] = useState(() => {
+    if (!podiumKey) return false;
+    try {
+      const key = `draw-it-right:podium-seen:${podiumKey}`;
+      if (sessionStorage.getItem(key) === '1') return true;
+      sessionStorage.setItem(key, '1');
+      return false;
+    } catch { return false; }
+  });
   const [cue, setCue] = useState<'intro' | 'suspense' | 'winner'>('intro');
-  const instant = reducedMotion;
+  const instant = reducedMotion || alreadySeen;
   const revealed = instant || cue === 'winner';
   useEffect(() => {
     if (instant) return;
