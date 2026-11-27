@@ -95,6 +95,13 @@ service cloud.firestore {
             && request.resource.data.host == resource.data.host
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['players', 'joinOrder'])
             && validRemoval(request.auth.uid))
+          || (request.auth.uid in resource.data.players
+            && request.resource.data.host == resource.data.host
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['players'])
+            && request.resource.data.players.diff(resource.data.players).affectedKeys().hasOnly([request.auth.uid])
+            && request.resource.data.players.size() == resource.data.players.size()
+            && request.resource.data.players[request.auth.uid] == memberProfile(request.auth.uid)
+            && sameOrder())
           || (request.auth.uid == resource.data.host && (
             (resource.data.status == 'waiting'
               && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['options'])

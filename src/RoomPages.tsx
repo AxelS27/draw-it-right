@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { auth } from './firebase';
-import { changeRoom, createRoom, defaultRoomOptions, joinRoom, roomError, watchRoom, type Room } from './rooms';
+import { changeRoom, createRoom, defaultRoomOptions, joinRoom, roomError, syncMemberProfile, watchRoom, type Room } from './rooms';
 import { ArrowLeft, ArrowRight, Clock3, Minus, Plus, Settings2, Sparkles, Trophy, Users } from 'lucide-react';
 import type { Profile } from './profile';
 import { navigate } from './navigation';
@@ -92,6 +92,14 @@ export function RoomPages({ path, profile, signedIn, ready, onLogin }: Props) {
       setLoading(false);
     }, message => { setNotice(message); setLoading(false); });
   }, [code, uid, profile]);
+
+  useEffect(() => {
+    if (!code || !uid || !profile || !room || room.status === 'closed') return;
+    const member = room.players[uid];
+    if (!member) return;
+    if (member.username === profile.username && JSON.stringify(member.avatar) === JSON.stringify(profile.avatar)) return;
+    void syncMemberProfile(code, uid, profile).catch(() => undefined);
+  }, [code, uid, profile, room]);
 
   useEffect(() => {
     if (!code || !uid || !activeMember) return;

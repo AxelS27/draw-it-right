@@ -95,6 +95,18 @@ export async function joinRoom(code: string, uid: string): Promise<void> {
   });
 }
 
+export async function syncMemberProfile(code: string, uid: string, profile: Profile): Promise<void> {
+  await runTransaction(getFirestore(auth.app), async transaction => {
+    const ref = roomRef(code);
+    const snapshot = await transaction.get(ref);
+    const room = snapshot.exists() ? parseRoom(snapshot.data()) : null;
+    if (!room || room.status === 'closed' || !room.players[uid]) return;
+    const current = room.players[uid]!;
+    if (current.username === profile.username && JSON.stringify(current.avatar) === JSON.stringify(profile.avatar)) return;
+    transaction.update(ref, { players: { ...room.players, [uid]: profile } });
+  });
+}
+
 export async function changeRoom(code: string, uid: string, action: 'settings' | 'lock' | 'start' | 'reopen' | 'leave' | 'remove' | 'transfer' | 'close', value?: RoomOptions | string): Promise<void> {
   await runTransaction(getFirestore(auth.app), async transaction => {
     const ref = roomRef(code);
