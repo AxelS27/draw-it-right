@@ -114,7 +114,7 @@ export function submit(match: Match, uid: string, now: number): { match: Match; 
 
 function roundTimerSeconds(match: Match): number {
   if (match.roundEvent === 'speed_blitz') return Math.max(12, Math.round(match.timer / 2));
-  if (match.round === match.rounds && match.rounds > 1) return Math.round(match.timer * 1.5);
+  if (match.round === match.rounds) return Math.round(match.timer * 1.5);
   return match.timer;
 }
 

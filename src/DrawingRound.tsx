@@ -181,7 +181,7 @@ export function DrawingRound({ options, round, prompt, messages, onSend, onBack,
     finally { setEventBusy(false); }
   }
 
-  const displayTimer = roundEvent === 'speed_blitz' ? Math.max(12, Math.round(options.timer / 2)) : round === options.rounds && options.rounds > 1 ? Math.round(options.timer * 1.5) : options.timer;
+  const displayTimer = roundEvent === 'speed_blitz' ? Math.max(12, Math.round(options.timer / 2)) : round === options.rounds ? Math.round(options.timer * 1.5) : options.timer;
   return <main className="drawing-page">
     <header className="drawing-heading">
       <button className="waiting-icon-button" aria-label="Back to waiting room" onClick={() => leaveDialog.current?.showModal()}><ArrowLeft size={20}/></button>
