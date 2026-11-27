@@ -112,10 +112,16 @@ export function submit(match: Match, uid: string, now: number): { match: Match; 
   return { match: { ...match, submitted: { ...match.submitted, [uid]: entry } }, accepted: true };
 }
 
+function roundTimerSeconds(match: Match): number {
+  if (match.roundEvent === 'speed_blitz') return Math.max(12, Math.round(match.timer / 2));
+  if (match.round === match.rounds && match.rounds > 1) return Math.round(match.timer * 1.5);
+  return match.timer;
+}
+
 export function finishJudging(match: Match, predictions: Record<string, Prediction>, now: number): Match {
   if (match.phase !== 'judging') return match;
   const entries: Record<string, Entry> = {};
-  const effectiveTimer = match.roundEvent === 'speed_blitz' ? Math.max(12, Math.round(match.timer / 2)) : match.timer;
+  const effectiveTimer = roundTimerSeconds(match);
   const multiplier = (match.roundEvent === 'double_points' || (match.round === match.rounds && match.doublePoints)) ? 2 : 1;
   for (const uid of match.order) {
     const submission = match.submitted[uid];
@@ -146,7 +152,7 @@ function finalizeMatch(match: Match): Match {
 export function advance(match: Match, now: number, roll: () => number = Math.random): Match {
   if (match.phase === 'final' || now < match.deadline) return match;
   if (match.phase === 'reveal') {
-    const roundSeconds = match.roundEvent === 'speed_blitz' ? Math.max(12, Math.round(match.timer / 2)) : match.timer;
+    const roundSeconds = roundTimerSeconds(match);
     return { ...match, phase: 'drawing', deadline: now + roundSeconds * 1000 };
   }
   if (match.phase === 'drawing') return { ...match, phase: 'judging', deadline: now + 1000 };

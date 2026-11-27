@@ -122,7 +122,7 @@ export function LiveMatch({ code, uid, isHost = false, hostInLobby = false, room
         items.push({ at: Number.MAX_SAFE_INTEGER, order: offset + 1000, msg: { id: `round-event-${state.session}-${state.round}`, author: `⚡ Event · R${state.round}`, text: `${ev.badge} - ${ev.hint}`, sample: true } });
       }
       if (state.round === state.rounds && state.doublePoints && state.roundEvent !== 'double_points') {
-        items.push({ at: Number.MAX_SAFE_INTEGER, order: offset + 1001, msg: { id: `finale-2x-${state.session}-${state.round}`, author: `⚡ Event · R${state.round}`, text: '💎 2× POINTS FINALE - Double points for the final round!', sample: true } });
+        items.push({ at: Number.MAX_SAFE_INTEGER, order: offset + 1001, msg: { id: `finale-2x-${state.session}-${state.round}`, author: `⚡ Event · R${state.round}`, text: '💎 2× POINTS FINALE - Double points & +50% drawing time for the final round!', sample: true } });
       }
     }
     return items.sort((a, b) => a.at - b.at || a.order - b.order).map(item => item.msg);
