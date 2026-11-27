@@ -73,10 +73,12 @@ export function RoomPages({ path, profile, signedIn, ready, onLogin }: Props) {
   const [stayOnFinal, setStayOnFinal] = useState(false);
   const [matchRun, setMatchRun] = useState(0);
   const prevStatus = useRef<Room['status'] | null>(null);
+  const autoJoinAttempted = useRef<string | null>(null);
   const noticeTimer = useRef<number | undefined>(undefined);
   const activeMember = Boolean(uid && room?.players[uid] && room.status !== 'closed');
 
   useEffect(() => () => { if (noticeTimer.current) window.clearTimeout(noticeTimer.current); }, []);
+  useEffect(() => { if (code && activeMember) autoJoinAttempted.current = code; }, [code, activeMember]);
 
   useEffect(() => {
     if (!code || !uid || !profile) return;
@@ -100,6 +102,14 @@ export function RoomPages({ path, profile, signedIn, ready, onLogin }: Props) {
     if (member.username === profile.username && JSON.stringify(member.avatar) === JSON.stringify(profile.avatar)) return;
     void syncMemberProfile(code, uid, profile).catch(() => undefined);
   }, [code, uid, profile, room]);
+
+  useEffect(() => {
+    if (!code || !uid || !profile || !room || room.status === 'closed' || room.players[uid]) return;
+    const canJoin = (room.status === 'waiting' || (room.status === 'started' && room.options.lateJoin)) && !room.locked && !room.banned.includes(uid) && Object.keys(room.players).length < room.options.capacity;
+    if (!canJoin || busy || autoJoinAttempted.current === code) return;
+    autoJoinAttempted.current = code;
+    void perform(() => joinRoom(code, uid), () => setJoined(true));
+  }, [code, uid, profile, room, busy]);
 
   useEffect(() => {
     if (!code || !uid || !activeMember) return;
@@ -160,6 +170,10 @@ export function RoomPages({ path, profile, signedIn, ready, onLogin }: Props) {
   if (code && loading) return <main className="room-page">{back}<section className="room-card room-empty"><h1>Finding your room…</h1></section></main>;
   if (code && room && (((room.status === 'started' || (room.status === 'waiting' && stayOnFinal)) && room.players[uid]) || (room.status === 'closed' && startedRoom?.players[uid]))) return <LiveMatch key={`match-${code}-${matchRun}`} code={code} uid={uid} isHost={room.host === uid} hostInLobby={room.status === 'waiting'} roomClosed={room.status === 'closed'} options={room.options} onRematch={async () => { if (room.host === uid) await changeRoom(code, uid, 'reopen'); setStayOnFinal(false); }} onLeave={() => { setStayOnFinal(false); if (room.status === 'closed') navigate('/'); else void perform(() => changeRoom(code, uid, 'leave'), () => navigate('/')); }} onFinish={() => { setStayOnFinal(false); if (room.status === 'closed') navigate('/'); else void perform(() => changeRoom(code, uid, room.host === uid ? 'close' : 'leave'), () => navigate('/')); }}/>;
   if (!code || !room || room.status === 'closed') return <main className="room-page">{back}<section className="room-card room-empty"><h1>Room not found</h1><p>{notice || 'Double-check your invite code or create a new room.'}</p><button className="room-primary" onClick={() => navigate('/room/new')}>Create a room</button></section></main>;
-  if (!room.players[uid]) return <main className="room-page">{back}<section className="room-card room-empty"><h1>{room.options.name || 'Join this room?'}</h1><p>{Object.keys(room.players).length} / {room.options.capacity} players · {room.options.rounds} rounds · {formatDuration(room.options.timer)}{room.locked ? ' · Locked' : ''}</p>{(room.status === 'waiting' || (room.status === 'started' && room.options.lateJoin)) && !room.locked && !room.banned.includes(uid) && Object.keys(room.players).length < room.options.capacity && <button className="room-primary" disabled={busy} onClick={() => void perform(() => joinRoom(code, uid), () => setJoined(true))}>{busy ? 'Joining…' : 'Join room'}<ArrowRight size={18}/></button>}<p className="room-notice" role="alert">{notice || (joined ? 'Joining…' : room.banned.includes(uid) ? 'You were removed from this room.' : room.status !== 'waiting' && !room.options.lateJoin ? 'This match has started.' : room.locked ? 'Ask the host to unlock this room.' : Object.keys(room.players).length >= room.options.capacity ? 'This room is full.' : '')}</p>{returnToRoom}</section></main>;
+  if (!room.players[uid]) {
+    const canJoin = (room.status === 'waiting' || (room.status === 'started' && room.options.lateJoin)) && !room.locked && !room.banned.includes(uid) && Object.keys(room.players).length < room.options.capacity;
+    const autoJoining = canJoin && !notice && (busy || joined || autoJoinAttempted.current === code);
+    return <main className="room-page">{back}<section className="room-card room-empty"><h1>{autoJoining ? 'Joining room…' : room.options.name || 'Couldn’t join room'}</h1><p>{Object.keys(room.players).length} / {room.options.capacity} players · {room.options.rounds} rounds · {formatDuration(room.options.timer)}{room.locked ? ' · Locked' : ''}</p>{canJoin && notice && <button className="room-primary" disabled={busy} onClick={() => void perform(() => joinRoom(code, uid), () => setJoined(true))}>{busy ? 'Joining…' : 'Try again'}<ArrowRight size={18}/></button>}<p className="room-notice" role="alert">{notice || (autoJoining ? 'Entering the waiting room…' : room.banned.includes(uid) ? 'You were removed from this room.' : room.status !== 'waiting' && !room.options.lateJoin ? 'This match has started.' : room.locked ? 'Ask the host to unlock this room.' : Object.keys(room.players).length >= room.options.capacity ? 'This room is full.' : '')}</p>{returnToRoom}</section></main>;
+  }
   return <WaitingRoom room={room} uid={uid} code={code} duration={formatDuration(room.options.timer)} busy={busy} notice={notice} onEdit={() => setEditing(true)} onCopy={copy} onAction={(action, value) => perform(async () => { if (action === 'start') await matchRequest('/health'); await changeRoom(code, uid, action, value); }, action === 'leave' || action === 'close' ? () => navigate('/') : undefined)}/>;
 }
