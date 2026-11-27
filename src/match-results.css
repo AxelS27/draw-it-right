@@ -96,7 +96,7 @@
 .match-skip-reveal:focus-visible { outline: 2px solid #ffdf91; outline-offset: 4px; }
 .match-podium-player:not(.podium-1) { transition: filter 0.7s ease; }
 .is-suspense .match-podium-player:not(.podium-1) { filter: brightness(0.35) saturate(0.4); }
-.match-celebration .podium-1 { animation-name: match-champion-reveal; animation-duration: 1.35s; }
+.match-celebration .podium-1 { animation-name: match-champion-reveal; animation-duration: 1.5s; }
 .is-revealed:not(.is-instant) .match-champion-crown { animation: match-crown-drop 1.1s cubic-bezier(0.22, 1.4, 0.36, 1) forwards; }
 .is-instant .match-podium-player, .is-instant .podium-1 > div, .is-instant .match-final-summary, .is-instant .match-champion-crown { animation: none; }
 .is-instant .match-confetti, .is-instant .match-champion-burst { display: none; }
@@ -157,7 +157,7 @@
 }
 .match-final-heading p { color: #d2e2e8; font-size: 12px; margin-top: 10px; }
 .match-podium { display: flex; justify-content: center; align-items: end; gap: 12px; margin: 30px auto 0; max-width: 700px; }
-.match-podium-player { width: 30%; min-width: 0; text-align: center; transform-origin: center bottom; animation: match-podium-reveal 1s cubic-bezier(0.2, 0.8, 0.3, 1) var(--reveal-delay) both; }
+.match-podium-player { width: 30%; min-width: 0; text-align: center; transform-origin: center bottom; animation: match-podium-reveal 1.2s cubic-bezier(0.2, 0.8, 0.3, 1) var(--reveal-delay) both; }
 .match-podium-player > svg { display: block; width: 100px; max-width: 100%; height: 100px; margin: auto; }
 .match-podium-player h3 { font-size: 14px; overflow-wrap: anywhere; margin-top: 6px; }
 .match-podium-player small { font-size: 10px; font-weight: 400; }
