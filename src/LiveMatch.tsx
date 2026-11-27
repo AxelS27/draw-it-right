@@ -22,6 +22,9 @@ export function LiveMatch({ code, uid, isHost = false, hostInLobby = false, room
   const [images, setImages] = useState<Record<string, string>>({});
   const [ownImages, setOwnImages] = useState<Record<string, string>>({});
   const [messages, setMessages] = useState<LiveMessage[]>([]);
+  const [matchLogs, setMatchLogs] = useState<{ id: string; text: string; at: number }[]>([]);
+  const prevOrder = useRef<string[] | null>(null);
+  const logSeq = useRef(0);
   const [chatError, setChatError] = useState('');
   const [rematching, setRematching] = useState(false);
   const [shared, setShared] = useState(false);
@@ -32,6 +35,21 @@ export function LiveMatch({ code, uid, isHost = false, hostInLobby = false, room
   useAudioScene(state?.phase === 'results' ? 'showcase' : state?.phase === 'final' ? 'podium' : state?.phase === 'judging' ? 'judging' : state?.phase === 'leaderboard' ? 'leaderboard' : state?.phase === 'drawing' && state.submissions.includes(uid) ? 'judging' : state?.phase === 'drawing' || state?.phase === 'reveal' ? 'drawing' : null, 2);
 
   useEffect(() => watchMessages(code, setMessages, setChatError), [code]);
+  useEffect(() => {
+    if (!state?.order) return;
+    if (!prevOrder.current) {
+      prevOrder.current = state.order;
+      return;
+    }
+    const prev = new Set(prevOrder.current);
+    const additions: { id: string; text: string; at: number }[] = [];
+    const ts = Date.now();
+    for (const id of state.order) {
+      if (!prev.has(id)) additions.push({ id: `match-join-${logSeq.current++}`, text: `${state.players[id]?.username ?? 'A player'} joined the match!`, at: ts });
+    }
+    prevOrder.current = state.order;
+    if (additions.length) setMatchLogs(current => [...current.slice(-30), ...additions]);
+  }, [state?.order, state?.players]);
   useEffect(() => {
     if (state?.phase === 'results' || state?.phase === 'leaderboard') {
       let frame = 0;
@@ -116,6 +134,9 @@ export function LiveMatch({ code, uid, isHost = false, hostInLobby = false, room
         items.push({ at, order: offset + idx, msg: { id: `event-${item.round}-${idx}`, author: `⚡ Event · R${item.round}`, text: `${fromName} activated ${ev?.badge ?? item.detail}${ev?.hint ? ` - ${ev.hint}` : '!'}`, sample: true } });
       }
     });
+    matchLogs.forEach((entry, idx) => {
+      items.push({ at: entry.at, order: offset + 500 + idx, msg: { id: entry.id, author: '🚪 Room', text: entry.text, sample: true } });
+    });
     if (state && state.round > 0) {
       if (state.roundEvent && state.roundEvent !== 'normal' && !(state.eventLog ?? []).some(item => item.round === state.round && item.kind === 'round_chaos' && item.detail === state.roundEvent)) {
         const ev = EVENT_LABELS[state.roundEvent];
@@ -126,7 +147,7 @@ export function LiveMatch({ code, uid, isHost = false, hostInLobby = false, room
       }
     }
     return items.sort((a, b) => a.at - b.at || a.order - b.order).map(item => item.msg);
-  }, [messages, state?.players, state?.eventLog, state?.round, state?.rounds, state?.doublePoints, state?.roundEvent, state?.session, uid]);
+  }, [messages, matchLogs, state?.players, state?.eventLog, state?.round, state?.rounds, state?.doublePoints, state?.roundEvent, state?.session, uid]);
   const { unread, openChat, closeChat, onDialogClose } = useUnreadChat(chatMessages, chatDialog);
   const sendChat = async (text: string) => { try { await sendMessage(code, uid, text); } catch (failure) { throw new Error(roomError(failure)); } };
 

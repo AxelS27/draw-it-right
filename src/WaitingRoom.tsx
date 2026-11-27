@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Copy, Crown, Link, LockKeyhole, MessageCircle, QrCode, Settings2, UnlockKeyhole, Users, X } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { AvatarPreview } from './AvatarPreview';
@@ -20,7 +20,10 @@ export function WaitingRoom({ room, uid, code, duration, busy, notice, onEdit, o
   const qrButton = useRef<HTMLButtonElement>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [messages, setMessages] = useState<LiveMessage[]>([]);
+  const [roomLogs, setRoomLogs] = useState<{ id: string; text: string; at: number }[]>([]);
   const [chatError, setChatError] = useState('');
+  const prevPlayers = useRef<Record<string, typeof room.players[string]> | null>(null);
+  const logSeq = useRef(0);
   const players = Object.entries(room.players).sort(([a], [b]) => a === room.host ? -1 : b === room.host ? 1 : 0);
   const count = players.length;
   const isHost = uid === room.host;
@@ -31,10 +34,41 @@ export function WaitingRoom({ room, uid, code, duration, busy, notice, onEdit, o
     try { await sendMessage(code, uid, text); }
     catch (error) { throw new Error(roomError(error)); }
   }
-  const chatMessages: ChatMessage[] = messages.map(message => ({ id: message.id, author: room.players[message.sender]?.username ?? 'Former player', text: message.text, isYou: message.sender === uid, senderId: message.sender }));
+  const chatMessages: ChatMessage[] = useMemo(() => {
+    const items = [
+      ...messages.map((message, idx) => ({
+        at: message.createdAt ?? idx,
+        order: idx,
+        msg: { id: message.id, author: room.players[message.sender]?.username ?? 'Former player', text: message.text, isYou: message.sender === uid, senderId: message.sender } satisfies ChatMessage,
+      })),
+      ...roomLogs.map((entry, idx) => ({
+        at: entry.at,
+        order: messages.length + idx,
+        msg: { id: entry.id, author: '🚪 Room', text: entry.text, sample: true } satisfies ChatMessage,
+      })),
+    ];
+    return items.sort((a, b) => a.at - b.at || a.order - b.order).map(item => item.msg);
+  }, [messages, roomLogs, room.players, uid]);
   const { unread, openChat, closeChat, onDialogClose } = useUnreadChat(chatMessages, chatDialog);
 
   useEffect(() => watchMessages(code, setMessages, setChatError), [code]);
+  useEffect(() => {
+    if (!prevPlayers.current) {
+      prevPlayers.current = room.players;
+      return;
+    }
+    const previous = prevPlayers.current;
+    const additions: { id: string; text: string; at: number }[] = [];
+    const now = Date.now();
+    for (const [id, player] of Object.entries(room.players)) {
+      if (!(id in previous)) additions.push({ id: `room-join-${logSeq.current++}`, text: `${player.username} joined the room.`, at: now });
+    }
+    for (const [id, player] of Object.entries(previous)) {
+      if (!(id in room.players)) additions.push({ id: `room-leave-${logSeq.current++}`, text: `${player.username} left the room.`, at: now });
+    }
+    prevPlayers.current = room.players;
+    if (additions.length) setRoomLogs(current => [...current.slice(-40), ...additions]);
+  }, [room.players]);
 
   useEffect(() => {
     if (selected && room.players[selected]) playerDialog.current?.showModal();
