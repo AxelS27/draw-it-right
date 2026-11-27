@@ -160,7 +160,7 @@ service cloud.firestore {
         function activeMember() {
           let room = get(/databases/$(database)/documents/rooms/$(code)).data;
           return request.auth != null && request.auth.uid == uid
-            && uid in room.players && room.status == 'waiting' && room.options.reactions;
+            && uid in room.players && room.status in ['waiting', 'started'] && room.options.reactions;
         }
         function member() {
           return request.auth != null

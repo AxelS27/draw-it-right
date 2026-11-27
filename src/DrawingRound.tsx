@@ -3,6 +3,8 @@ import { ArrowLeft, Clock3, MessageCircle, Sparkles } from 'lucide-react';
 import { DrawingCanvas, type DrawingCanvasHandle } from './DrawingCanvas';
 import type { AttackType, EventOfferKind, RoundEvent } from './match-api';
 import { RoomChat, useUnreadChat, type ChatMessage } from './RoomChat';
+import { RoomReactions } from './RoomReactions';
+import type { Profile } from './profile';
 import type { RoomOptions } from './RoomPages';
 import './drawing-round.css';
 import { gameAudio } from './audio';
@@ -48,6 +50,7 @@ type LiveRound = {
   revealing: boolean; remaining: number; submitted: boolean; judgingMode?: 'model';
   roundEvent?: RoundEvent; cursedBy?: { type: AttackType; attackerName: string } | null;
   eventOffer?: EventOfferKind | null; announcements?: EventAnnouncementBanner[];
+  reactions?: { code: string; uid: string; players: Record<string, Profile> };
   onEventChoice?: (payload: EventChoicePayload) => Promise<void>;
   onSubmit: (image: string) => Promise<void>; onDraft: (image: string | null) => Promise<LivePrediction | null | void>;
 };
@@ -249,9 +252,13 @@ export function DrawingRound({ options, round, prompt, messages, onSend, onBack,
             </div>
           )}
         </div>
-        <div className="drawing-actions">
-          <div role="status">{!live && !revealing ? 'Draw until the timer ends!' : ''}</div>
-        </div>
+        {options.reactions && live?.reactions ? (
+          <RoomReactions code={live.reactions.code} uid={live.reactions.uid} players={live.reactions.players}/>
+        ) : (
+          <div className="drawing-actions">
+            <div role="status">{!live && !revealing ? 'Draw until the timer ends!' : ''}</div>
+          </div>
+        )}
       </section>
       <aside className="drawing-chat"><RoomChat messages={messages} onSend={onSend} live={Boolean(live)}/></aside>
     </div>
