@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type RefObject } from 'react';
 import { MessageCircle, Send, X } from 'lucide-react';
+import { gameAudio } from './audio';
 import './room-chat.css';
 
 export type ChatMessage = { id: number | string; author: string; text: string; sample?: boolean; isYou?: boolean; senderId?: string };
@@ -61,15 +62,37 @@ export function useUnreadChat(messages: ChatMessage[], dialogRef: RefObject<HTML
 export function RoomChat({ messages, onSend, onClose, live = false }: { messages: ChatMessage[]; onSend: (text: string) => void | Promise<void>; onClose?: () => void; live?: boolean }) {
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
   const [error, setError] = useState('');
   const log = useRef<HTMLDivElement>(null);
-  useEffect(() => { if (log.current) log.current.scrollTop = log.current.scrollHeight; }, [messages]);
+  const seenCount = useRef<number | null>(null);
+  useEffect(() => {
+    if (log.current) log.current.scrollTop = log.current.scrollHeight;
+    if (seenCount.current === null) {
+      seenCount.current = messages.length;
+      return;
+    }
+    if (messages.length > seenCount.current) {
+      const last = messages.at(-1);
+      if (last && !last.isYou && !last.sample) gameAudio.play('select');
+    }
+    seenCount.current = messages.length;
+  }, [messages]);
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = window.setTimeout(() => setCooldown(c => Math.max(0, c - 1)), 1000);
+    return () => window.clearTimeout(timer);
+  }, [cooldown]);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!draft.trim() || sending) return;
+    if (!draft.trim() || sending || cooldown > 0) return;
     setSending(true);
     setError('');
-    try { await onSend(draft.trim().slice(0, 160)); setDraft(''); }
+    try {
+      await onSend(draft.trim().slice(0, 160));
+      setDraft('');
+      setCooldown(5);
+    }
     catch (failure) { setError(failure instanceof Error ? failure.message : 'Couldn’t send. Try again.'); }
     finally { setSending(false); }
   }
@@ -85,6 +108,6 @@ export function RoomChat({ messages, onSend, onClose, live = false }: { messages
       })}
     </div>
     {error && <p className="waiting-chat-error" role="alert">{error}</p>}
-    <form className="waiting-chat-form" onSubmit={event => void submit(event)}><label className="sr-only" htmlFor={onClose ? 'mobile-chat-message' : 'chat-message'}>Message</label><input id={onClose ? 'mobile-chat-message' : 'chat-message'} value={draft} maxLength={160} placeholder="Say hello…" autoComplete="off" onChange={event => setDraft(event.target.value)}/><button type="submit" aria-label="Send message" disabled={!draft.trim() || sending}><Send size={18}/></button></form>
+    <form className="waiting-chat-form" onSubmit={event => void submit(event)}><label className="sr-only" htmlFor={onClose ? 'mobile-chat-message' : 'chat-message'}>Message</label><input id={onClose ? 'mobile-chat-message' : 'chat-message'} value={draft} maxLength={160} placeholder={cooldown > 0 ? `Wait ${cooldown}s to chat…` : 'Say hello…'} autoComplete="off" onChange={event => setDraft(event.target.value)}/><button type="submit" aria-label="Send message" disabled={!draft.trim() || sending || cooldown > 0}>{cooldown > 0 ? cooldown : <Send size={18}/>}</button></form>
   </section>;
 }

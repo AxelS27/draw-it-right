@@ -48,7 +48,8 @@
 .waiting-reaction-buttons { display: flex; gap: 8px; }
 .waiting-reaction-buttons button { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 12px; background: #fff9ef; font-size: 26px; user-select: none; transition: transform .18s cubic-bezier(0.34, 1.56, 0.64, 1), background .18s ease; }
 .waiting-reaction-buttons button:hover { background: #ffdf91; transform: translateY(-3px) scale(1.06); }
-.waiting-reaction-buttons button:active { transform: scale(.9); }
+.waiting-reaction-buttons button:active:not(:disabled) { transform: scale(.9); }
+.waiting-reaction-buttons button:disabled { opacity: .48; cursor: not-allowed; transform: none; }
 .waiting-reaction-error { margin-top: 4px; color: #ffe1a0; text-align: center; font-size: 11px; }
 .waiting-reaction-layer { position: absolute; inset: 0; overflow: hidden; border-radius: inherit; pointer-events: none; z-index: 4; }
 .waiting-floating-reaction { position: absolute; bottom: 96px; display: flex; flex-direction: column; align-items: center; gap: 5px; contain: layout style; will-change: transform, opacity; animation: waiting-reaction-float 4s linear both; }

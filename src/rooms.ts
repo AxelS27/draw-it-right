@@ -176,8 +176,16 @@ export async function sendReaction(code: string, uid: string, symbol: ReactionSy
 }
 
 export function watchMessages(code: string, onMessages: (messages: LiveMessage[]) => void, onError: (message: string) => void): Unsubscribe {
+  let initial = true;
+  const hiddenIds = new Set<string>();
   return onSnapshot(query(messagesRef(code), orderBy('createdAt', 'desc'), limit(100)), snapshot => {
-    onMessages(snapshot.docs.map(message => {
+    if (initial) {
+      initial = false;
+      for (const message of snapshot.docs) hiddenIds.add(message.id);
+      onMessages([]);
+      return;
+    }
+    onMessages(snapshot.docs.filter(message => !hiddenIds.has(message.id)).map(message => {
       const data = message.data();
       const createdAt = typeof data.createdAt?.toMillis === 'function' ? data.createdAt.toMillis() as number : undefined;
       return { id: message.id, sender: data.sender as string, text: data.text as string, createdAt };

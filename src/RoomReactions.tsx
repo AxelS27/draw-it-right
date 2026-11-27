@@ -7,13 +7,19 @@ type FloatingReaction = { id: number; symbol: ReactionSymbol; name: string; left
 
 export function RoomReactions({ code, uid, players, edgesOnly = false }: { code: string; uid: string; players: Record<string, Profile>; edgesOnly?: boolean }) {
   const [active, setActive] = useState<FloatingReaction[]>([]);
+  const [cooldown, setCooldown] = useState(0);
   const [error, setError] = useState('');
   const [announcement, setAnnouncement] = useState('');
   const nextId = useRef(0);
   const lastSent = useRef(0);
-  const lastSync = useRef(0);
   const playersRef = useRef(players);
   playersRef.current = players;
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = window.setTimeout(() => setCooldown(c => Math.max(0, c - 1)), 1000);
+    return () => window.clearTimeout(timer);
+  }, [cooldown]);
 
   function spawn(name: string, symbol: ReactionSymbol) {
     const left = edgesOnly ? (Math.random() < 0.5 ? 4 + Math.random() * 7 : 89 + Math.random() * 7) : 16 + Math.random() * 68;
@@ -36,12 +42,11 @@ export function RoomReactions({ code, uid, players, edgesOnly = false }: { code:
 
   async function react(symbol: ReactionSymbol) {
     const now = Date.now();
-    if (now - lastSent.current < 120) return;
+    if (now - lastSent.current < 5000) return;
     lastSent.current = now;
+    setCooldown(5);
     spawn('You', symbol);
     setError('');
-    if (now - lastSync.current < 250) return;
-    lastSync.current = now;
     try { await sendReaction(code, uid, symbol); }
     catch (failure) { setError(roomError(failure)); }
   }
@@ -51,7 +56,7 @@ export function RoomReactions({ code, uid, players, edgesOnly = false }: { code:
       {active.map(item => <div key={item.id} className="waiting-floating-reaction" style={{ left: `${item.left}%`, '--drift': `${item.drift}px` } as CSSProperties} onAnimationEnd={() => setActive(current => current.filter(reaction => reaction.id !== item.id))}><span>{item.symbol}</span><small>{item.name}</small></div>)}
     </div>
     <section className="waiting-reaction-dock" aria-label="Room reactions">
-      <div className="waiting-reaction-buttons">{reactionSymbols.map((symbol, index) => <button key={symbol} type="button" aria-label={`React with ${labels[index]!.toLowerCase()}`} title={labels[index]} onClick={() => void react(symbol)}>{symbol}</button>)}</div>
+      <div className="waiting-reaction-buttons">{reactionSymbols.map((symbol, index) => <button key={symbol} type="button" disabled={cooldown > 0} aria-label={`React with ${labels[index]!.toLowerCase()}`} title={cooldown > 0 ? `Wait ${cooldown}s` : labels[index]} onClick={() => void react(symbol)}>{symbol}</button>)}</div>
     </section>
     {error && <p className="waiting-reaction-error" role="alert">{error}</p>}
     <span className="sr-only" role="status">{announcement}</span>
