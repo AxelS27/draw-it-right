@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  frontend-and-worker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm --prefix worker ci
+      - name: Typecheck and build frontend
+        run: npm run build
+      - name: Typecheck worker
+        run: npm run build:worker
+      - name: Run unit and integration tests
+        run: |
+          npm run test:preview
+          npm run test:audio
+          npm run test:room
+          npm run test:live
+
+  onnx-inference:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - name: Install inference dependencies
+        run: pip install -r requirements.txt
+      - name: Verify ONNX model and preprocessing
+        run: |
+          python -c "
+          import base64, io
+          from PIL import Image, ImageDraw
+          from api._inference import predict, CLASSES
+          assert len(CLASSES) == 100
+          img = Image.new('RGB', (800, 500), 'white')
+          ImageDraw.Draw(img).ellipse([250, 100, 550, 400], outline='black', width=10)
+          buf = io.BytesIO()
+          img.save(buf, format='JPEG', quality=72)
+          url = 'data:image/jpeg;base64,' + base64.b64encode(buf.getvalue()).decode()
+          res = predict([url], 'circle')[0]
+          assert res and res['class'] == 'circle', res
+          print('ONNX CI check OK:', res)
+          "
