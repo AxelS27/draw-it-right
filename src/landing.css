@@ -21,6 +21,10 @@ button:disabled { cursor: wait; opacity: .65; transform: none; }
 .shop-link:hover { background: #ffda8424; border-color: #ffda8470; }
 .shop-link:focus-visible { outline: 2px solid #ffda84; outline-offset: 3px; }
 .coin-balance { color: #ffe1a0; background: transparent; border: 0; cursor: default; user-select: none; }
+.join-main.is-hydrating { visibility: hidden; }
+.join-main:not(.is-hydrating), .shop-page, .room-page { animation: page-enter .16s ease-out; }
+@keyframes page-enter { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+.account-skeleton { width: 108px; height: 46px; border-radius: 12px; background: #ffffff14; border: 1px solid #ffffff22; }
 .account-button { display: flex; align-items: center; gap: 9px; min-height: 46px; max-width: 190px; padding: 5px 13px 5px 6px; color: #fff9ef; background: #ffffff12; border: 1px solid #ffffff30; border-radius: 12px; font-weight: 700; }
 .account-button:hover:not(:disabled) { background: #ffffff22; border-color: #ffffff4a; }
 .account-button:focus-visible { outline-color: #ffda84; outline-offset: 3px; }

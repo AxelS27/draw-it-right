@@ -1,12 +1,16 @@
 import { doc, getFirestore } from 'firebase/firestore';
 import { auth } from './firebase';
 
-export const colors = { mint: '#9cd7bd', gold: '#f5cf78', rose: '#eab5bf', blue: '#9bc8e8', lilac: '#c5b3e6', peach: '#f3b58f', cream: '#f4e4bc', teal: '#71c8c4' };
+export const colors = {
+  mint: '#9cd7bd', gold: '#f5cf78', rose: '#eab5bf', blue: '#9bc8e8',
+  lilac: '#c5b3e6', peach: '#f3b58f', cream: '#f4e4bc', teal: '#71c8c4',
+  coral: '#f4978e', sky: '#a2d2ff', rainbow: 'url(#avatar-rainbow)',
+};
 const choices = {
   base: ['bean', 'cat', 'bear', 'bunny', 'blob', 'robot'],
-  color: ['mint', 'gold', 'rose', 'blue', 'lilac', 'peach', 'cream', 'teal'],
+  color: ['mint', 'gold', 'rose', 'blue', 'lilac', 'peach', 'cream', 'teal', 'coral', 'sky', 'rainbow'],
   face: ['smile', 'wink', 'happy', 'surprised', 'sleepy', 'cheeky'],
-  accessory: ['none', 'glasses', 'shades', 'crown', 'bow', 'headphones'],
+  accessory: ['none', 'glasses', 'shades', 'crown', 'bow', 'headphones', 'halo', 'beanie', 'party', 'santa', 'antlers', 'beard', 'elf', 'scarf'],
 } as const;
 export type Avatar = { [K in keyof typeof choices]: typeof choices[K][number] };
 export const avatarOptions: { [K in keyof Avatar]: readonly Avatar[K][] } = choices;

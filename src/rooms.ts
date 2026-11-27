@@ -95,7 +95,7 @@ export async function joinRoom(code: string, uid: string): Promise<void> {
   });
 }
 
-export async function changeRoom(code: string, uid: string, action: 'settings' | 'lock' | 'start' | 'leave' | 'remove' | 'transfer' | 'close', value?: RoomOptions | string): Promise<void> {
+export async function changeRoom(code: string, uid: string, action: 'settings' | 'lock' | 'start' | 'reopen' | 'leave' | 'remove' | 'transfer' | 'close', value?: RoomOptions | string): Promise<void> {
   await runTransaction(getFirestore(auth.app), async transaction => {
     const ref = roomRef(code);
     const snapshot = await transaction.get(ref);
@@ -115,6 +115,10 @@ export async function changeRoom(code: string, uid: string, action: 'settings' |
     }
     if (uid !== room.host) throw new Error('Only the host can do that.');
     if (action === 'close') { transaction.update(ref, { status: 'closed' }); return; }
+    if (action === 'reopen') {
+      if (room.status === 'started') transaction.update(ref, { status: 'waiting' });
+      return;
+    }
     if (action === 'transfer') {
       const target = value as string;
       if (target === uid || !room.players[target]) throw new Error('Choose a player who is still in this room.');

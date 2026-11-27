@@ -12,9 +12,9 @@ import './live-match.css';
 
 const loadingImage = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500"><rect width="800" height="500" fill="#fff"/><text x="400" y="250" text-anchor="middle" fill="#58777c" font-family="sans-serif" font-size="26">Loading drawing…</text></svg>');
 const blankImage = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500"><rect width="800" height="500" fill="#fff"/></svg>');
-type Props = { code: string; uid: string; isHost?: boolean; roomClosed: boolean; options: RoomOptions; onLeave: () => void; onFinish: () => void };
+type Props = { code: string; uid: string; isHost?: boolean; hostInLobby?: boolean; roomClosed: boolean; options: RoomOptions; onLeave: () => void; onFinish: () => void; onRematch: () => Promise<void> };
 
-export function LiveMatch({ code, uid, isHost = false, roomClosed, options, onLeave, onFinish }: Props) {
+export function LiveMatch({ code, uid, isHost = false, hostInLobby = false, roomClosed, options, onLeave, onFinish, onRematch }: Props) {
   const [state, setState] = useState<MatchState | null>(null);
   const [now, setNow] = useState(Date.now());
   const [offset, setOffset] = useState(0);
@@ -96,18 +96,28 @@ export function LiveMatch({ code, uid, isHost = false, roomClosed, options, onLe
   }, [code, state?.session, state?.phase, lastResult]);
 
   const chatMessages: ChatMessage[] = useMemo(() => {
-    const base: ChatMessage[] = messages.map(message => ({ id: message.id, text: message.text, author: state?.players[message.sender]?.username ?? 'Former player', isYou: message.sender === uid }));
+    const base: ChatMessage[] = messages.map(message => ({ id: message.id, text: message.text, author: state?.players[message.sender]?.username ?? 'Former player', isYou: message.sender === uid, senderId: message.sender }));
     const logs: ChatMessage[] = (state?.eventLog ?? []).map((item, idx) => {
       const fromName = state?.players[item.from]?.username ?? 'Someone';
       if (item.kind === 'sabotage') {
         const [atk, rawTargets = ''] = item.detail.split(':');
         const targetNames = rawTargets.split(',').filter(Boolean).map(id => state?.players[id]?.username ?? 'Player').join(', ');
-        return { id: `event-${item.round}-${idx}`, author: '⚡ Event', text: `${fromName} sabotaged ${targetNames} (${ATTACK_LABELS[atk as AttackType] ?? atk})!`, sample: true };
+        return { id: `event-${item.round}-${idx}`, author: `⚡ Event · R${item.round}`, text: `${fromName} sabotaged ${targetNames} (${ATTACK_LABELS[atk as AttackType] ?? atk})!`, sample: true };
       }
-      return { id: `event-${item.round}-${idx}`, author: '⚡ Event', text: `${fromName} activated ${EVENT_LABELS[item.detail as Exclude<RoundEvent, 'normal'>]?.badge ?? item.detail}!`, sample: true };
+      const ev = EVENT_LABELS[item.detail as Exclude<RoundEvent, 'normal'>];
+      return { id: `event-${item.round}-${idx}`, author: `⚡ Event · R${item.round}`, text: `${fromName} activated ${ev?.badge ?? item.detail}${ev?.hint ? ` - ${ev.hint}` : '!'}`, sample: true };
     });
+    if (state && state.round > 0) {
+      if (state.roundEvent && state.roundEvent !== 'normal' && !(state.eventLog ?? []).some(item => item.round === state.round && item.kind === 'round_chaos' && item.detail === state.roundEvent)) {
+        const ev = EVENT_LABELS[state.roundEvent];
+        logs.push({ id: `round-event-${state.session}-${state.round}`, author: `⚡ Event · R${state.round}`, text: `${ev.badge} - ${ev.hint}`, sample: true });
+      }
+      if (state.round === state.rounds && state.doublePoints && state.roundEvent !== 'double_points') {
+        logs.push({ id: `finale-2x-${state.session}-${state.round}`, author: `⚡ Event · R${state.round}`, text: '💎 2× POINTS FINALE - Double points for the final round!', sample: true });
+      }
+    }
     return [...base, ...logs];
-  }, [messages, state?.players, state?.eventLog, uid]);
+  }, [messages, state?.players, state?.eventLog, state?.round, state?.rounds, state?.doublePoints, state?.roundEvent, state?.session, uid]);
   const { unread, openChat, closeChat, onDialogClose } = useUnreadChat(chatMessages, chatDialog);
   const sendChat = async (text: string) => { try { await sendMessage(code, uid, text); } catch (failure) { throw new Error(roomError(failure)); } };
 
@@ -186,17 +196,18 @@ export function LiveMatch({ code, uid, isHost = false, roomClosed, options, onLe
       {state.phase === 'final' && (
         <div className="match-actions">
           <div className="match-action-buttons">
-            {!roomClosed && isHost && (
-              <button className="room-primary" disabled={rematching} onClick={() => {
+            {!roomClosed && (
+              <button className="room-primary" disabled={rematching || (!isHost && !hostInLobby)} onClick={() => {
                 setRematching(true);
-                void matchRequest(`/rooms/${code}/rematch`, {}).catch(() => undefined).finally(() => setRematching(false));
+                const action = isHost ? matchRequest(`/rooms/${code}/rematch`, {}).then(() => onRematch()) : onRematch();
+                void action.catch(() => undefined).finally(() => setRematching(false));
               }}>
-                {rematching ? 'Starting…' : 'Play Again'}
+                {rematching ? 'Returning…' : 'Play Again'}
               </button>
             )}
-            <button className={isHost && !roomClosed ? 'room-secondary' : 'room-primary'} data-sound="close" onClick={isHost ? onFinish : onLeave}>Leave room</button>
+            <button className={!roomClosed ? 'room-secondary' : 'room-primary'} data-sound="close" onClick={isHost ? onFinish : onLeave}>Leave room</button>
           </div>
-          <span>{roomClosed ? 'Match complete · room closed' : isHost ? 'Play again with the same crew or leave' : 'Waiting for host to play again…'}</span>
+          <span>{roomClosed ? 'Match complete · room closed' : isHost ? 'Play again with the same crew or leave' : hostInLobby ? 'Host is in the room! Click Play Again to join.' : 'Waiting for host to join the room first…'}</span>
         </div>
       )}
     </section><aside className="drawing-chat"><RoomChat live messages={chatMessages} onSend={sendChat}/>{chatError && <p className="waiting-chat-error" role="alert">{chatError}</p>}</aside></div>

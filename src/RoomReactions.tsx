@@ -11,26 +11,35 @@ export function RoomReactions({ code, uid, players }: { code: string; uid: strin
   const [announcement, setAnnouncement] = useState('');
   const nextId = useRef(0);
   const lastSent = useRef(0);
+  const lastSync = useRef(0);
   const playersRef = useRef(players);
   playersRef.current = players;
 
+  function spawn(name: string, symbol: ReactionSymbol) {
+    setActive(current => [...current.slice(-35), { id: nextId.current++, symbol, name, left: 16 + Math.random() * 68, drift: Math.random() * 84 - 42, expires: Date.now() + 4300 }]);
+    setAnnouncement(`${name} reacted.`);
+  }
+
   useEffect(() => {
     const unsubscribe = watchReactions(code, (sender, symbol) => {
-      const name = sender === uid ? 'You' : playersRef.current[sender]?.username ?? 'Player';
-      setActive(current => [...current.slice(-11), { id: nextId.current++, symbol, name, left: 18 + Math.random() * 64, drift: Math.random() * 100 - 50, expires: Date.now() + 2800 }]);
-      setAnnouncement(`${name} reacted.`);
+      if (sender === uid) return;
+      const name = playersRef.current[sender]?.username ?? 'Player';
+      spawn(name, symbol);
     }, setError);
     const timer = window.setInterval(() => {
       setActive(current => current.some(item => item.expires <= Date.now()) ? current.filter(item => item.expires > Date.now()) : current);
-    }, 500);
+    }, 2000);
     return () => { unsubscribe(); window.clearInterval(timer); };
   }, [code, uid]);
 
   async function react(symbol: ReactionSymbol) {
     const now = Date.now();
-    if (now - lastSent.current < 1100) return;
+    if (now - lastSent.current < 120) return;
     lastSent.current = now;
+    spawn('You', symbol);
     setError('');
+    if (now - lastSync.current < 250) return;
+    lastSync.current = now;
     try { await sendReaction(code, uid, symbol); }
     catch (failure) { setError(roomError(failure)); }
   }
