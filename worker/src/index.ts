@@ -372,15 +372,21 @@ export class MatchRoom extends DurableObject<Env> {
     if (!this.env.INFERENCE_URL || !this.env.INFERENCE_SECRET || !this.env.INFERENCE_URL.startsWith('https://')) throw new Error('Inference service not configured');
     const images = await Promise.all(ids.map(uid => this.ctx.storage.get<string>(`image:${match.session}:${match.round}:${uid}`)));
     if (images.some(image => !image)) throw new Error('Submitted image missing');
-    const response = await fetch(`${this.env.INFERENCE_URL.replace(/\/$/, '')}/predict`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Inference-Secret': this.env.INFERENCE_SECRET },
-      body: JSON.stringify({ prompt: match.prompt, images }), signal: AbortSignal.timeout(90000),
-    });
-    if (!response.ok) throw new Error(`Inference HTTP ${response.status}`);
-    const body = await response.json() as { predictions?: unknown };
-    if (!Array.isArray(body.predictions) || body.predictions.length !== ids.length) throw new Error('Invalid inference response');
+    const endpoint = `${this.env.INFERENCE_URL.replace(/\/$/, '')}/predict`;
+    const chunks: (string | undefined)[][] = [];
+    for (let i = 0; i < images.length; i += 20) chunks.push(images.slice(i, i + 20));
+    const chunkRows = await Promise.all(chunks.map(async batch => {
+      const response = await fetch(endpoint, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Inference-Secret': this.env.INFERENCE_SECRET! },
+        body: JSON.stringify({ prompt: match.prompt, images: batch }), signal: AbortSignal.timeout(90000),
+      });
+      if (!response.ok) throw new Error(`Inference HTTP ${response.status}`);
+      const body = await response.json() as { predictions?: unknown };
+      if (!Array.isArray(body.predictions) || body.predictions.length !== batch.length) throw new Error('Invalid inference response');
+      return body.predictions as unknown[];
+    }));
     const predictions: Record<string, Prediction> = {};
-    const rows = body.predictions as unknown[];
+    const rows = chunkRows.flat();
     ids.forEach((uid, i) => {
       const value: unknown = rows[i];
       if (value === null) { predictions[uid] = null; return; }
