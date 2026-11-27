@@ -127,6 +127,24 @@ export function DrawingCanvas({ locked, ref, onEmpty, noUndo = false, wobbleBrus
     }
     paint();
   }, [locked, invisibleInk]);
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (locked || noUndo || event.altKey) return;
+      if (!(event.ctrlKey || event.metaKey)) return;
+      const target = event.target;
+      if (target instanceof HTMLElement && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+      const key = event.key.toLowerCase();
+      if (key === 'z') {
+        event.preventDefault();
+        changeHistory(event.shiftKey);
+      } else if (key === 'y' && !event.shiftKey) {
+        event.preventDefault();
+        changeHistory(true);
+      }
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [locked, noUndo, invisibleInk]);
 
   function point(event: PointerEvent<HTMLCanvasElement>): Point {
     const bounds = event.currentTarget.getBoundingClientRect();
@@ -173,7 +191,7 @@ export function DrawingCanvas({ locked, ref, onEmpty, noUndo = false, wobbleBrus
     <fieldset className="drawing-tools" disabled={locked} aria-label="Drawing tools">
       <div className="drawing-tool-group"><button type="button" title="Brush" aria-label="Brush" disabled={lineOnly} aria-pressed={!lineOnly && (tool === 'brush' || (noUndo && tool === 'eraser'))} onClick={() => setTool('brush')}><Pencil size={19}/></button><button type="button" title="Straight line" aria-label="Straight line" aria-pressed={isLine} onClick={() => setTool('line')}><Minus size={19}/></button><button type="button" title="Eraser" aria-label="Eraser" disabled={noUndo || lineOnly} aria-pressed={eraser} onClick={() => setTool('eraser')}><Eraser size={19}/></button></div>
       <div className="drawing-tool-group" role="group" aria-label="Brush size">{[4, 8, 16].map((value, index) => <button key={value} type="button" aria-label={`${['Small', 'Medium', 'Large'][index]} brush`} disabled={wobbleBrush} aria-pressed={!wobbleBrush && size === value} onClick={() => setSize(value)}><span className="drawing-size-dot" style={{ width: value + 2, height: value + 2 }}/></button>)}</div>
-      <div className="drawing-tool-group"><button type="button" aria-label="Undo" title="Undo" disabled={noUndo || !history.undo} onClick={() => changeHistory(false)}><Undo2 size={19}/></button><button type="button" aria-label="Redo" title="Redo" disabled={noUndo || !history.redo} onClick={() => changeHistory(true)}><Redo2 size={19}/></button><button type="button" aria-label="Clear canvas" title="Clear canvas" disabled={noUndo || !history.undo} onClick={() => clearDialog.current?.showModal()}><Trash2 size={19}/></button></div>
+      <div className="drawing-tool-group"><button type="button" aria-label="Undo" title="Undo (Ctrl+Z / Cmd+Z)" disabled={noUndo || !history.undo} onClick={() => changeHistory(false)}><Undo2 size={19}/></button><button type="button" aria-label="Redo" title="Redo (Ctrl+Y / Cmd+Shift+Z)" disabled={noUndo || !history.redo} onClick={() => changeHistory(true)}><Redo2 size={19}/></button><button type="button" aria-label="Clear canvas" title="Clear canvas" disabled={noUndo || !history.undo} onClick={() => clearDialog.current?.showModal()}><Trash2 size={19}/></button></div>
     </fieldset>
     <dialog ref={clearDialog} className="waiting-player-dialog drawing-clear" aria-labelledby="clear-title"><h2 id="clear-title">Start fresh?</h2><p>This clears your whole drawing and undo history.</p><div><button className="room-secondary" onClick={() => clearDialog.current?.close()}>Keep drawing</button><button className="room-primary" onClick={() => { if (!locked) { strokes.current = []; undone.current = []; current.current = null; syncHistory(); paint(); onEmpty?.(); } clearDialog.current?.close(); }}>Clear canvas</button></div></dialog>
   </>;
