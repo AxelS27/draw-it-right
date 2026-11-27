@@ -11,6 +11,9 @@
 .waiting-chat-empty { color: #71857e; font-size: 12px; line-height: 1.6; text-align: center; padding: 20px 4px; }
 .waiting-message { max-width: 85%; background: #f0eee5; border-radius: 12px 12px 12px 3px; padding: 11px 12px; margin: 0 0 12px; align-self: flex-start; }
 .waiting-message.is-mine { background: #e6efdf; border-radius: 12px 12px 3px 12px; align-self: flex-end; }
+.waiting-message.is-mine > div > strong { color: #2e5c3e; }
+.waiting-message.is-event { background: #fff3d6; }
+.waiting-message.is-event > div > strong { color: #8a6116; }
 .waiting-message > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; font-size: 10px; }
 .waiting-message > div > span { color: #74877c; font-size: 9px; }
 .waiting-message p { margin-top: 6px; font-size: 12px; line-height: 1.6; white-space: pre-wrap; }

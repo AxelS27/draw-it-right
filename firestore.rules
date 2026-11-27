@@ -106,6 +106,10 @@ service cloud.firestore {
               && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
               && request.resource.data.status == 'started' && resource.data.players.size() >= 2
               && sameOrder())
+            || (resource.data.status == 'started'
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+              && request.resource.data.status == 'waiting'
+              && sameOrder())
             || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
               && request.resource.data.status == 'closed' && sameOrder())
             || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['host'])
@@ -163,8 +167,7 @@ service cloud.firestore {
         }
         allow get, list: if member();
         allow create: if activeMember() && validReaction();
-        allow update: if activeMember() && validReaction()
-          && request.time >= resource.data.sentAt + duration.value(1, 's');
+        allow update: if activeMember() && validReaction();
         allow delete: if false;
       }
     }
@@ -181,9 +184,9 @@ service cloud.firestore {
           && a.keys().hasAll(['base', 'color', 'face', 'accessory'])
           && a.keys().hasOnly(['base', 'color', 'face', 'accessory'])
           && a.base in ['bean', 'cat', 'bear', 'bunny', 'blob', 'robot']
-          && a.color in ['mint', 'gold', 'rose', 'blue', 'lilac', 'peach', 'cream', 'teal']
+          && a.color in ['mint', 'gold', 'rose', 'blue', 'lilac', 'peach', 'cream', 'teal', 'coral', 'sky', 'rainbow']
           && a.face in ['smile', 'wink', 'happy', 'surprised', 'sleepy', 'cheeky']
-          && a.accessory in ['none', 'glasses', 'shades', 'crown', 'bow', 'headphones'];
+          && a.accessory in ['none', 'glasses', 'shades', 'crown', 'bow', 'headphones', 'halo', 'beanie', 'party', 'santa', 'antlers', 'beard', 'elf', 'scarf'];
       }
       allow get: if owner();
       allow create, update: if owner() && validProfile();

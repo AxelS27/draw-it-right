@@ -39,8 +39,8 @@ export function ProfileSetup({ uid, onProfile, onLogout, loggingOut }: Props) {
   }, [uid, attempt]);
 
   useEffect(() => {
-    if (status === 'ready') { dialog.current?.close(); return; }
-    dialog.current?.showModal();
+    if (status === 'required' || status === 'error') dialog.current?.showModal();
+    else dialog.current?.close();
   }, [status]);
 
   useEffect(() => {

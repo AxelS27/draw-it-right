@@ -1,4 +1,6 @@
 /* Catalog height changes must not resize or recrop the background artwork. */
+.game-world:has(.shop-page) { overflow: clip; }
+.game-world:has(.shop-page) > .header { position: sticky; top: 0; z-index: 10; backdrop-filter: blur(8px); }
 .game-world:has(.shop-page) > .background-art { position: fixed; }
 html:has(.shop-page) { scrollbar-gutter: stable; }
 .shop-page { width: min(1180px, 100%); margin: 0 auto; padding: 14px 28px 32px; flex: 1; }
@@ -31,7 +33,7 @@ html:has(.shop-page) { scrollbar-gutter: stable; }
 .shop-item-bottom { margin-inline: 5px; font-size: 10px; color: #607b7b; gap: 6px; }
 .shop-item-bottom strong { display: inline-flex; align-items: center; gap: 4px; color: #866525; font-size: 11px; }
 .shop-catalog-note { font-size: 11px; line-height: 1.6; color: #d5e2e5; margin-top: 18px; }
-.shop-fitting-room { position: sticky; top: 20px; border: 1px solid #fff; border-radius: 22px; background: #fffcf6; padding: 22px; color: #294f61; box-shadow: 0 6px 0 #203d5625; }
+.shop-fitting-room { position: sticky; top: 96px; border: 1px solid #fff; border-radius: 22px; background: #fffcf6; padding: 22px; color: #294f61; box-shadow: 0 6px 0 #203d5625; }
 .shop-fitting-heading h2 { font: 500 23px 'Fredoka', sans-serif; }
 .shop-fitting-heading > span { display: flex; align-items: center; gap: 7px; font-size: 11px; color: #607b7b; margin-top: 7px; }
 .shop-avatar-stage { position: relative; display: grid; place-items: center; height: 240px; border-radius: 18px; margin: 20px 0; background-image: radial-gradient(circle at 1px 1px, #587b7122 1px, transparent 0); background-size: 18px 18px; }
@@ -47,6 +49,7 @@ html:has(.shop-page) { scrollbar-gutter: stable; }
 .shop-try-button { display: flex; align-items: center; justify-content: center; gap: 9px; min-height: 48px; width: 100%; margin-top: 22px; border: 1px solid #e3b65f; border-bottom: 3px solid #c99645; border-radius: 12px; background: #ffd479; color: #58422e; font-weight: 700; font-size: 13px; }
 .shop-try-button:hover:not(:disabled) { background: #ffdf98; }
 .shop-try-button:disabled { background: #e1ecdf; border-color: #c4d5c0; color: #4f7767; opacity: 1; cursor: default; }
+.shop-try-button.is-unaffordable:disabled { background: #ffe0d9; border-color: #f3aba0; color: #9e332d; cursor: not-allowed; }
 .shop-reset { display: flex; align-items: center; justify-content: center; gap: 7px; width: 100%; min-height: 44px; margin-top: 5px; font-size: 12px; color: #607b7b; background: transparent; }
 .shop-local-note { padding-top: 12px; border-top: 1px solid #e1e6d9; font-size: 10px; color: #607b7b; line-height: 1.7; text-align: center; }
 .shop-status { font-size: 11px; color: #406e69; line-height: 1.6; }

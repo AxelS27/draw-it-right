@@ -2,11 +2,13 @@ import { useEffect, useImperativeHandle, useRef, useState, type PointerEvent, ty
 import { Eraser, Minus, Pencil, Redo2, Trash2, Undo2 } from 'lucide-react';
 
 type Point = { x: number; y: number };
-type Stroke = { points: Point[]; color: string; size: number; line: boolean };
+type Stroke = { points: Point[]; color: string; size: number; line: boolean; sizes?: number[] };
+
+const wobbleSize = () => 2 + Math.round((0.5 + 0.5 * Math.sin(performance.now() * 0.009)) * 22);
 
 export type DrawingCanvasHandle = { snapshot: (format?: 'png' | 'jpeg') => string; hasDrawing: () => boolean };
 
-export function DrawingCanvas({ locked, ref, onEmpty, noUndo = false, forceSize, canvasClassName, flipped = false, shaking = false, mirrored = false, ghost = false }: { locked: boolean; ref?: Ref<DrawingCanvasHandle>; onEmpty?: () => void; noUndo?: boolean; forceSize?: number; canvasClassName?: string; flipped?: boolean; shaking?: boolean; mirrored?: boolean; ghost?: boolean }) {
+export function DrawingCanvas({ locked, ref, onEmpty, noUndo = false, forceSize, wobbleBrush = false, invisibleInk = false, canvasClassName, flipped = false, shaking = false, mirrored = false, ghost = false }: { locked: boolean; ref?: Ref<DrawingCanvasHandle>; onEmpty?: () => void; noUndo?: boolean; forceSize?: number; wobbleBrush?: boolean; invisibleInk?: boolean; canvasClassName?: string; flipped?: boolean; shaking?: boolean; mirrored?: boolean; ghost?: boolean }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const strokes = useRef<Stroke[]>([]);
   const undone = useRef<Stroke[]>([]);
@@ -25,28 +27,49 @@ export function DrawingCanvas({ locked, ref, onEmpty, noUndo = false, forceSize,
   const [history, setHistory] = useState({ undo: 0, redo: 0 });
   const clearDialog = useRef<HTMLDialogElement>(null);
 
-  useImperativeHandle(ref, () => ({ snapshot: (format = 'png') => canvas.current?.toDataURL(format === 'jpeg' ? 'image/jpeg' : 'image/png', .72) ?? '', hasDrawing: () => strokes.current.length > 0 || current.current !== null }));
+  useImperativeHandle(ref, () => ({
+    snapshot: (format = 'png') => {
+      paint(true);
+      const url = canvas.current?.toDataURL(format === 'jpeg' ? 'image/jpeg' : 'image/png', .72) ?? '';
+      if (invisibleInk && !locked) paint();
+      return url;
+    },
+    hasDrawing: () => strokes.current.length > 0 || current.current !== null,
+  }));
 
-  function paint() {
+  function paint(reveal = false) {
     const context = canvas.current?.getContext('2d');
     if (!context) return;
     context.fillStyle = '#ffffff';
     context.fillRect(0, 0, 800, 500);
+    if (invisibleInk && !locked && !reveal) return;
     for (const stroke of [...strokes.current, ...(current.current ? [current.current] : [])]) {
       const first = stroke.points[0];
       if (!first) continue;
       context.fillStyle = stroke.color;
       context.strokeStyle = stroke.color;
-      context.lineWidth = stroke.size;
+      context.lineWidth = stroke.sizes?.[0] ?? stroke.size;
       context.lineCap = 'round';
       context.lineJoin = 'round';
       context.beginPath();
-      context.arc(first.x, first.y, stroke.size / 2, 0, Math.PI * 2);
+      context.arc(first.x, first.y, (stroke.sizes?.[0] ?? stroke.size) / 2, 0, Math.PI * 2);
       context.fill();
-      context.beginPath();
-      context.moveTo(first.x, first.y);
-      for (const point of stroke.points.slice(1)) context.lineTo(point.x, point.y);
-      context.stroke();
+      if (stroke.sizes) {
+        for (let i = 1; i < stroke.points.length; i++) {
+          const prev = stroke.points[i - 1]!;
+          const next = stroke.points[i]!;
+          context.lineWidth = stroke.sizes[i] ?? stroke.size;
+          context.beginPath();
+          context.moveTo(prev.x, prev.y);
+          context.lineTo(next.x, next.y);
+          context.stroke();
+        }
+      } else {
+        context.beginPath();
+        context.moveTo(first.x, first.y);
+        for (const point of stroke.points.slice(1)) context.lineTo(point.x, point.y);
+        context.stroke();
+      }
     }
   }
   function syncHistory() { setHistory({ undo: strokes.current.length, redo: undone.current.length }); }
@@ -102,7 +125,8 @@ export function DrawingCanvas({ locked, ref, onEmpty, noUndo = false, forceSize,
       pointer.current = null;
       clearDialog.current?.close();
     }
-  }, [locked]);
+    paint();
+  }, [locked, invisibleInk]);
 
   function point(event: PointerEvent<HTMLCanvasElement>): Point {
     const bounds = event.currentTarget.getBoundingClientRect();
@@ -113,14 +137,25 @@ export function DrawingCanvas({ locked, ref, onEmpty, noUndo = false, forceSize,
     event.currentTarget.setPointerCapture(event.pointerId);
     pointer.current = event.pointerId;
     undone.current = [];
-    current.current = { points: [point(event)], color: eraser ? '#ffffff' : '#000000', size: eraser ? activeSize * 3 : activeSize, line: tool === 'line' };
+    const strokeSize = eraser ? activeSize * 3 : wobbleBrush ? wobbleSize() : activeSize;
+    const strokeColor = eraser ? '#ffffff' : '#000000';
+    current.current = {
+      points: [point(event)],
+      color: strokeColor,
+      size: strokeSize,
+      line: tool === 'line',
+      ...(wobbleBrush && !eraser && tool !== 'line' ? { sizes: [strokeSize] } : {}),
+    };
     paint();
     syncHistory();
   }
   function move(event: PointerEvent<HTMLCanvasElement>) {
     if (locked || pointer.current !== event.pointerId || !current.current) return;
     if (current.current.line) current.current.points = [current.current.points[0]!, point(event)];
-    else current.current.points.push(point(event));
+    else {
+      current.current.points.push(point(event));
+      if (current.current.sizes) current.current.sizes.push(wobbleSize());
+    }
     paint();
   }
   function changeHistory(redo: boolean) {
@@ -137,7 +172,7 @@ export function DrawingCanvas({ locked, ref, onEmpty, noUndo = false, forceSize,
     <div className={`drawing-paper${canvasClassName ? ` ${canvasClassName}` : ''}`}><canvas ref={canvas} width={800} height={500} style={{ cursor }} aria-label="Drawing canvas. Use a mouse, touch, or pen to draw." onPointerDown={down} onPointerMove={move} onPointerUp={event => { if (pointer.current === event.pointerId) { move(event); finish(); } }} onPointerCancel={event => { if (pointer.current === event.pointerId) finish(); }} onLostPointerCapture={event => { if (pointer.current === event.pointerId) finish(); }}/></div>
     <fieldset className="drawing-tools" disabled={locked} aria-label="Drawing tools">
       <div className="drawing-tool-group"><button type="button" title="Brush" aria-label="Brush" aria-pressed={tool === 'brush' || (noUndo && tool === 'eraser')} onClick={() => setTool('brush')}><Pencil size={19}/></button><button type="button" title="Straight line" aria-label="Straight line" aria-pressed={tool === 'line'} onClick={() => setTool('line')}><Minus size={19}/></button><button type="button" title="Eraser" aria-label="Eraser" disabled={noUndo} aria-pressed={eraser} onClick={() => setTool('eraser')}><Eraser size={19}/></button></div>
-      <div className="drawing-tool-group" role="group" aria-label="Brush size">{[4, 8, 16].map((value, index) => <button key={value} type="button" aria-label={`${['Small', 'Medium', 'Large'][index]} brush`} disabled={forceSize !== undefined && forceSize !== value} aria-pressed={activeSize === value} onClick={() => setSize(value)}><span className="drawing-size-dot" style={{ width: value + 2, height: value + 2 }}/></button>)}</div>
+      <div className="drawing-tool-group" role="group" aria-label="Brush size">{[4, 8, 16].map((value, index) => <button key={value} type="button" aria-label={`${['Small', 'Medium', 'Large'][index]} brush`} disabled={wobbleBrush || (forceSize !== undefined && forceSize !== value)} aria-pressed={!wobbleBrush && activeSize === value} onClick={() => setSize(value)}><span className="drawing-size-dot" style={{ width: value + 2, height: value + 2 }}/></button>)}</div>
       <div className="drawing-tool-group"><button type="button" aria-label="Undo" title="Undo" disabled={noUndo || !history.undo} onClick={() => changeHistory(false)}><Undo2 size={19}/></button><button type="button" aria-label="Redo" title="Redo" disabled={noUndo || !history.redo} onClick={() => changeHistory(true)}><Redo2 size={19}/></button><button type="button" aria-label="Clear canvas" title="Clear canvas" disabled={noUndo || !history.undo} onClick={() => clearDialog.current?.showModal()}><Trash2 size={19}/></button></div>
     </fieldset>
     <dialog ref={clearDialog} className="waiting-player-dialog drawing-clear" aria-labelledby="clear-title"><h2 id="clear-title">Start fresh?</h2><p>This clears your whole drawing and undo history.</p><div><button className="room-secondary" onClick={() => clearDialog.current?.close()}>Keep drawing</button><button className="room-primary" onClick={() => { if (!locked) { strokes.current = []; undone.current = []; current.current = null; syncHistory(); paint(); onEmpty?.(); } clearDialog.current?.close(); }}>Clear canvas</button></div></dialog>

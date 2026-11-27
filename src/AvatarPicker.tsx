@@ -19,7 +19,7 @@ export function AvatarPicker({ avatar, disabled, onChange }: Props) {
         <button type="button" aria-label={`Previous ${labels[key].toLowerCase()}`} onClick={() => cycle(key, -1)}><ChevronLeft size={20}/></button>
         <div className="picker-choice" aria-live="polite" aria-atomic="true">
           <span className="picker-art" aria-hidden="true">
-            {key === 'color' ? <span className="picker-swatch" style={{ backgroundColor: colors[avatar.color] }}/>
+            {key === 'color' ? <span className={`picker-swatch${avatar.color === 'rainbow' ? ' is-rainbow' : ''}`} style={avatar.color === 'rainbow' ? undefined : { backgroundColor: colors[avatar.color] }}/>
               : key === 'accessory' && avatar.accessory === 'none' ? <Minus size={28}/>
               : <AvatarPartPreview avatar={avatar} part={key}/>
             }

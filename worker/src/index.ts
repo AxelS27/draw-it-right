@@ -1,6 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
-import { addLatePlayer, advance, applyEventChoice, createMatch, finishJudging, publicMatch, rematch, submit, type AttackType, type Match, type Prediction, type RoundEvent } from './engine';
+import { addLatePlayer, advance, applyEventChoice, createMatch, finishJudging, publicMatch, submit, type AttackType, type Match, type Prediction, type RoundEvent } from './engine';
 import { changeFirestoreRoom, firestoreRoom, type RoomInfo } from './firestore-room';
 
 interface Env {
@@ -12,7 +12,12 @@ interface Env {
   INFERENCE_SECRET?: string;
 }
 const jwks = createRemoteJWKSet(new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com'));
-const prices: Record<string, number> = { crown: 350, headphones: 250, bow: 150, shades: 200, cat: 400, bunny: 400, robot: 450, bear: 400, rose: 100, lilac: 100, gold: 100 };
+const prices: Record<string, number> = {
+  crown: 350, headphones: 250, bow: 150, shades: 200, glasses: 150, halo: 300, beanie: 250, party: 220, santa: 100,
+  cat: 400, bunny: 400, robot: 450, bear: 400, blob: 350,
+  rose: 100, lilac: 100, gold: 100, blue: 100, peach: 100, cream: 100, teal: 100, coral: 120, sky: 120, rainbow: 500,
+  wink: 80, happy: 100, surprised: 80, sleepy: 90, cheeky: 120,
+};
 
 async function verify(token: string, projectId: string): Promise<string> {
   const { payload } = await jwtVerify(token, jwks, { issuer: `https://securetoken.google.com/${projectId}`, audience: projectId, algorithms: ['RS256'] });
@@ -45,6 +50,14 @@ export default {
           } catch { return Response.json({ ok: true, inferenceConfigured: true, inferenceReady: false }, { headers: cors }); }
         }
         return Response.json({ ok: true, inferenceConfigured: configured }, { headers: cors });
+      }
+      if (url.pathname === '/admin/grant' && request.method === 'POST') {
+        if (!env.INFERENCE_SECRET || request.headers.get('X-Inference-Secret') !== env.INFERENCE_SECRET) return fail('Forbidden', 403);
+        const body = await request.json() as { uid?: unknown; balance?: unknown };
+        if (typeof body.uid !== 'string' || !body.uid || typeof body.balance !== 'number' || !Number.isSafeInteger(body.balance) || body.balance < 0) return fail('Invalid grant', 400);
+        const stub = env.WALLETS.get(env.WALLETS.idFromName(body.uid));
+        const result = await stub.fetch(new Request('https://internal/grant', { method: 'POST', body: JSON.stringify({ balance: body.balance }) }));
+        return new Response(result.body, { status: result.status, headers: { ...cors, 'Content-Type': 'application/json' } });
       }
       const route = /^\/rooms\/(\d{6})\/(presence|socket|submit|draft|event|rematch|drawing\/\d+\/[A-Za-z0-9_-]+)$/.exec(url.pathname);
       const socket = route?.[2] === 'socket' || route?.[2] === 'presence';
@@ -184,17 +197,15 @@ export class MatchRoom extends DurableObject<Env> {
     if (url.pathname.endsWith('/rematch') && request.method === 'POST') {
       const room = JSON.parse(decodeURIComponent(request.headers.get('X-Room-Info') ?? '')) as RoomInfo;
       if (room.host !== uid) return error('Only the host can start a rematch', 403);
-      const nextMatch = await this.ctx.storage.transaction(async storage => {
+      const cleared = await this.ctx.storage.transaction(async storage => {
         const latest = await storage.get<Match>('state');
-        if (!latest || latest.phase !== 'final') return null;
-        const reset = rematch(latest, Date.now());
+        if (!latest || latest.phase !== 'final') return false;
+        await storage.delete('state');
         await storage.delete('roomClosed');
-        await storage.put('state', reset);
-        return reset;
+        await storage.deleteAlarm();
+        return true;
       });
-      if (!nextMatch) return error('Match is not finished yet', 409);
-      await this.schedule(nextMatch);
-      this.broadcast(nextMatch);
+      if (!cleared) return error('Match is not finished yet', 409);
       return Response.json({ ok: true });
     }
     if (url.pathname.endsWith('/event') && request.method === 'POST') {
@@ -415,6 +426,12 @@ export class PlayerWallet extends DurableObject<Env> {
         return current + body.amount;
       });
       return Response.json({ balance: updated });
+    }
+    if (url.pathname === '/grant' && request.method === 'POST') {
+      const body = await request.json() as { balance: number };
+      if (!Number.isSafeInteger(body.balance) || body.balance < 0) return error('Invalid balance');
+      await this.ctx.storage.put('balance', body.balance);
+      return Response.json({ balance: body.balance, owned });
     }
     if (!request.headers.get('X-Verified-Uid')) return error('Unauthorized', 401);
     if (url.pathname === '/wallet' && request.method === 'GET') return Response.json({ balance, owned });

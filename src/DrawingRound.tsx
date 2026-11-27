@@ -11,11 +11,11 @@ export const EVENT_LABELS: Record<Exclude<RoundEvent, 'normal'>, { badge: string
   speed_blitz: { badge: '⚡ SPEED BLITZ', hint: 'Short timer, 2× speed bonus!' },
   double_points: { badge: '💎 2× POINTS', hint: 'Double points for everyone this round!' },
   no_undo: { badge: '🚫 NO UNDO', hint: 'Eraser, Undo & Clear are locked!' },
-  fat_brush: { badge: '🖌️ FAT BRUSH', hint: 'Large brush only!' },
+  fat_brush: { badge: '🫥 INVISIBLE INK', hint: 'Draw blind! Your ink reveals at the end!' },
   precision: { badge: '🎯 PRECISION +400', hint: '+400 pts if AI confidence >= 85%!' },
   upside_down: { badge: '🙃 UPSIDE DOWN ALL', hint: 'Everyone draws upside down!' },
   shake: { badge: '🌋 EARTHQUAKE ALL', hint: 'Everyone’s canvas shakes!' },
-  tiny_brush: { badge: '🤏 MICRO PEN ALL', hint: 'Tiny 2px brush only for everyone!' },
+  tiny_brush: { badge: '🎢 WOBBLE PEN ALL', hint: 'Brush size swings big & small!' },
   ghost_ink: { badge: '👻 GHOST INK ALL', hint: 'Everyone’s canvas fades in and out!' },
   mirror_x: { badge: '🪞 MIRROR CHAOS', hint: 'Everyone’s canvas is mirrored!' },
 };
@@ -24,7 +24,7 @@ export const ATTACK_LABELS: Record<AttackType, string> = {
   upside_down: '🙃 Upside Down',
   shake: '🌋 Earthquake',
   no_undo: '🚫 No Undo',
-  tiny_brush: '🤏 Micro Pen',
+  tiny_brush: '🎢 Wobble Pen',
   ghost_ink: '👻 Ghost Ink',
   mirror_x: '🪞 Mirror Mode',
 };
@@ -33,7 +33,7 @@ const ATTACK_CARD_HINTS: Record<AttackType, string> = {
   upside_down: 'Flips their canvas 180°!',
   shake: 'Shakes their canvas while drawing!',
   no_undo: 'Locks their Eraser, Undo & Clear!',
-  tiny_brush: 'Forces a tiny 2px needle pen!',
+  tiny_brush: 'Brush size keeps swinging big & small!',
   ghost_ink: 'Makes their canvas fade like a ghost!',
   mirror_x: 'Mirrors their canvas left-to-right!',
 };
@@ -143,7 +143,8 @@ export function DrawingRound({ options, round, prompt, messages, onSend, onBack,
   const roundEvent = live?.roundEvent && live.roundEvent !== 'normal' ? live.roundEvent : null;
   const curse = live?.cursedBy ?? null;
   const noUndo = roundEvent === 'no_undo' || curse?.type === 'no_undo';
-  const forceSize = roundEvent === 'fat_brush' ? 16 : (roundEvent === 'tiny_brush' || curse?.type === 'tiny_brush') ? 2 : undefined;
+  const wobbleBrush = roundEvent === 'tiny_brush' || curse?.type === 'tiny_brush';
+  const invisibleInk = roundEvent === 'fat_brush';
   const isFlipped = roundEvent === 'upside_down' || curse?.type === 'upside_down';
   const isShaking = roundEvent === 'shake' || curse?.type === 'shake';
   const isMirrored = roundEvent === 'mirror_x' || curse?.type === 'mirror_x';
@@ -195,7 +196,7 @@ export function DrawingRound({ options, round, prompt, messages, onSend, onBack,
           </div>
         )}
         <div className="drawing-editor" onPointerUp={scheduleStrokeCheck}>
-          <DrawingCanvas ref={canvas} locked={revealing || expired || showEventCards} noUndo={noUndo} forceSize={forceSize} canvasClassName={canvasClassName} flipped={isFlipped} shaking={isShaking} mirrored={isMirrored} ghost={isGhost} onEmpty={live ? () => { setLivePrediction(null); if (savedDraft.current) void live.onDraft(null).catch(() => { /* The interval retries. */ }); } : undefined}/>
+          <DrawingCanvas ref={canvas} locked={revealing || expired || showEventCards} noUndo={noUndo} wobbleBrush={wobbleBrush} invisibleInk={invisibleInk} canvasClassName={canvasClassName} flipped={isFlipped} shaking={isShaking} mirrored={isMirrored} ghost={isGhost} onEmpty={live ? () => { setLivePrediction(null); if (savedDraft.current) void live.onDraft(null).catch(() => { /* The interval retries. */ }); } : undefined}/>
           {banner && !revealing && (
             <div className={`drawing-center-banner${banner.isYouTarget ? ' is-victim' : banner.kind === 'sabotage' ? ' is-sabotage' : ' is-twist'}`} role="status">
               <strong>{banner.text}</strong>

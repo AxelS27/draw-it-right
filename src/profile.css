@@ -40,6 +40,8 @@ html:has(dialog[open]), body:has(dialog[open]) { overflow: hidden; }
 .picker-art { display: grid; place-items: center; height: 54px; width: 54px; }
 .picker-art > .avatar-part { width: 54px; height: 54px; }
 .picker-swatch { width: 34px; height: 34px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 0 1px #31576325, 0 3px 0 #31576325; }
+.picker-swatch.is-rainbow { background: conic-gradient(#ff85a1, #ffd166, #7ae582, #64dfdf, #8ecae6, #c77dff, #ff85a1); animation: rainbow-spin 2.6s linear infinite; }
+@keyframes rainbow-spin { to { transform: rotate(360deg); } }
 .avatar-actions { position: absolute; top: 10px; right: 10px; display: flex; gap: 6px; }
 .avatar-actions button { display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border: 1px solid #b5cfc2; border-radius: 12px; background: #fffdf4e6; color: #426c65; box-shadow: 0 2px 0 #b5cfc2; }
 .avatar-actions button:hover:not(:disabled) { background: #ffe5a6; }

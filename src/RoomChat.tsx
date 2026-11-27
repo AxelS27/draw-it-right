@@ -2,7 +2,24 @@ import { useEffect, useRef, useState, type FormEvent, type RefObject } from 'rea
 import { MessageCircle, Send, X } from 'lucide-react';
 import './room-chat.css';
 
-export type ChatMessage = { id: number | string; author: string; text: string; sample?: boolean; isYou?: boolean };
+export type ChatMessage = { id: number | string; author: string; text: string; sample?: boolean; isYou?: boolean; senderId?: string };
+
+const otherChatColors = [
+  { bg: '#e3effb', author: '#255c8a' },
+  { bg: '#fbe5eb', author: '#993b56' },
+  { bg: '#fdf0d5', author: '#8f5d14' },
+  { bg: '#ece4fa', author: '#5b3c8c' },
+  { bg: '#fde8df', author: '#9c4529' },
+  { bg: '#ddf3f4', author: '#1d6970' },
+  { bg: '#f5e4f3', author: '#7c3474' },
+  { bg: '#e5eafc', author: '#394b94' },
+];
+
+function playerChatColor(key: string) {
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+  return otherChatColors[hash % otherChatColors.length]!;
+}
 
 export function useUnreadChat(messages: ChatMessage[], dialogRef: RefObject<HTMLDialogElement | null>) {
   const [open, setOpen] = useState(false);
@@ -62,7 +79,9 @@ export function RoomChat({ messages, onSend, onClose, live = false }: { messages
       {live && messages.length === 0 && <p className="waiting-chat-empty">No messages yet. Say hi to the room!</p>}
       {messages.map(message => {
         const isMine = live ? Boolean(message.isYou) : !message.sample;
-        return <article key={message.id} className={`waiting-message ${isMine ? 'is-mine' : 'is-other'}${message.sample ? ' is-sample' : ''}`}><div><strong>{message.author}</strong>{!live && <span>{message.sample ? 'Sample' : 'Only you'}</span>}</div><p>{message.text}</p></article>;
+        const isEvent = live && Boolean(message.sample);
+        const palette = !isMine && !isEvent ? playerChatColor(message.senderId || message.author) : null;
+        return <article key={message.id} className={`waiting-message ${isMine ? 'is-mine' : 'is-other'}${message.sample ? ' is-sample' : ''}${isEvent ? ' is-event' : ''}`} style={palette ? { backgroundColor: palette.bg } : undefined}><div><strong style={palette ? { color: palette.author } : undefined}>{message.author}</strong>{!live && <span>{message.sample ? 'Sample' : 'Only you'}</span>}</div><p>{message.text}</p></article>;
       })}
     </div>
     {error && <p className="waiting-chat-error" role="alert">{error}</p>}

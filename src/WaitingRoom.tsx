@@ -31,7 +31,7 @@ export function WaitingRoom({ room, uid, code, duration, busy, notice, onEdit, o
     try { await sendMessage(code, uid, text); }
     catch (error) { throw new Error(roomError(error)); }
   }
-  const chatMessages: ChatMessage[] = messages.map(message => ({ id: message.id, author: room.players[message.sender]?.username ?? 'Former player', text: message.text, isYou: message.sender === uid }));
+  const chatMessages: ChatMessage[] = messages.map(message => ({ id: message.id, author: room.players[message.sender]?.username ?? 'Former player', text: message.text, isYou: message.sender === uid, senderId: message.sender }));
   const { unread, openChat, closeChat, onDialogClose } = useUnreadChat(chatMessages, chatDialog);
 
   useEffect(() => watchMessages(code, setMessages, setChatError), [code]);

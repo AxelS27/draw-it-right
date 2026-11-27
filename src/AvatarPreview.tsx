@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { colors, type Avatar } from './profile';
 
 function Body({ base, fill }: { base: Avatar['base']; fill: string }) {
@@ -30,12 +31,23 @@ function Accessory({ accessory }: { accessory: Avatar['accessory'] }) {
     {accessory === 'crown' && <><path d="m53 43-6-27 20 13L80 9l13 20 20-13-6 27Z" fill="#ffd479"/><path d="M54 44h52"/><circle cx="80" cy="32" r="4" fill="#e6a0b1" stroke="none"/></>}
     {accessory === 'bow' && <><path d="M98 39 77 23q-8 17 0 31Zm7 0 22-16q8 17 0 31Z" fill="#eab5bf"/><circle cx="102" cy="39" r="7" fill="#f6d6da"/></>}
     {accessory === 'headphones' && <><path d="M27 88V70a53 53 0 0 1 106 0v18" strokeWidth="8"/><rect x="21" y="71" width="17" height="31" rx="8" fill="#c5b3e6"/><rect x="122" y="71" width="17" height="31" rx="8" fill="#c5b3e6"/></>}
+    {accessory === 'halo' && <ellipse cx="80" cy="24" rx="34" ry="9" stroke="#f5b82e" strokeWidth="5"/>}
+    {accessory === 'beanie' && <><path d="M36 52q44-36 88 0Z" fill="#e07a5f"/><rect x="33" y="46" width="94" height="14" rx="7" fill="#f2cc8f"/><circle cx="80" cy="18" r="8" fill="#f2cc8f"/></>}
+    {accessory === 'party' && <><path d="m55 44 25-38 25 38Z" fill="#71c8c4"/><circle cx="80" cy="7" r="6" fill="#ffd479"/><path d="M62 32h36" stroke="#ffdf91"/></>}
+    {accessory === 'santa' && <><path d="M38 48q14-36 52-36 22 0 34 22l-12 6q-10-12-22-12-8 10-8 20Z" fill="#d94f4f"/><rect x="33" y="42" width="94" height="14" rx="7" fill="#fffaf2"/><circle cx="126" cy="34" r="8" fill="#fffaf2"/></>}
+    {accessory === 'antlers' && <><path d="M54 44C46 28 36 22 30 12m14 16c-6 0-12-2-15-7m20 12c2-7 5-13 9-17" stroke="#8b5a3c" strokeWidth="5"/><path d="M106 44c8-16 18-22 24-32m-14 16c6 0 12-2 15-7m-20 12c-2-7-5-13-9-17" stroke="#8b5a3c" strokeWidth="5"/><circle cx="80" cy="90" r="6" fill="#e04f4f"/></>}
+    {accessory === 'beard' && <><path d="M40 102q-2 38 40 44 42-6 40-44-14 8-40 8t-40-8Z" fill="#fffaf2"/><path d="M55 98q12-7 25 2 13-9 25-2-4 10-16 8-6-1-9-4-3 3-9 4-12 2-16-8Z" fill="#fffaf2"/></>}
+    {accessory === 'elf' && <><path d="M38 48 64 14l48 16-14 18Z" fill="#58a878"/><path d="M35 48q12-9 22 0t23 0 22 0 23 0l-3 9H38Z" fill="#d94f4f"/><circle cx="115" cy="30" r="6" fill="#ffd479"/></>}
+    {accessory === 'scarf' && <><rect x="31" y="116" width="98" height="16" rx="8" fill="#d94f4f"/><path d="M92 126h18v24l-9-5-9 5Z" fill="#58a878"/><path d="M46 116v16m24-16v16m24-16v16" stroke="#fffaf2"/></>}
   </g>;
 }
 
 const accessoryBounds: Record<Avatar['accessory'], string> = {
   none: '0 0 160 160', glasses: '35 43 90 72', shades: '34 44 92 74',
   crown: '37 0 86 60', bow: '66 13 73 53', headphones: '10 6 140 110',
+  halo: '36 6 88 38', beanie: '25 4 110 64', party: '44 0 72 54',
+  santa: '25 4 115 62', antlers: '22 4 116 54', beard: '32 88 96 66',
+  elf: '28 4 104 60', scarf: '24 108 112 50',
 };
 
 export function AvatarPartPreview({ avatar, part }: { avatar: Avatar; part: 'base' | 'face' | 'accessory' }) {
@@ -47,9 +59,24 @@ export function AvatarPartPreview({ avatar, part }: { avatar: Avatar; part: 'bas
 }
 
 export function AvatarPreview({ avatar }: { avatar: Avatar }) {
+  const rainbowId = `avatar-rainbow-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
+  const fill = avatar.color === 'rainbow' ? `url(#${rainbowId})` : colors[avatar.color];
   return <svg viewBox="0 0 160 160" role="img" aria-label={`${avatar.color} ${avatar.base}, ${avatar.face}${avatar.accessory !== 'none' ? `, with ${avatar.accessory}` : ''}`}>
+    {avatar.color === 'rainbow' && (
+      <defs>
+        <linearGradient id={rainbowId} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#ff85a1"/>
+          <stop offset="20%" stopColor="#ffd166"/>
+          <stop offset="40%" stopColor="#7ae582"/>
+          <stop offset="60%" stopColor="#64dfdf"/>
+          <stop offset="80%" stopColor="#8ecae6"/>
+          <stop offset="100%" stopColor="#c77dff"/>
+          <animateTransform attributeName="gradientTransform" type="rotate" from="0 .5 .5" to="360 .5 .5" dur="2.6s" repeatCount="indefinite"/>
+        </linearGradient>
+      </defs>
+    )}
     <ellipse cx="80" cy="143" rx="47" ry="7" fill="#284f5915"/>
-    <Body base={avatar.base} fill={colors[avatar.color]}/>
+    <Body base={avatar.base} fill={fill}/>
     <Face face={avatar.face}/>
     <g fill="#e9899260"><ellipse cx="48" cy="96" rx="9" ry="5"/><ellipse cx="112" cy="96" rx="9" ry="5"/></g>
     <Accessory accessory={avatar.accessory}/>

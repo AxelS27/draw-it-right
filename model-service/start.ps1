@@ -12,8 +12,11 @@ $secretFile = Join-Path $PSScriptRoot '.local-secret'
 $cloudflared = Join-Path $PSScriptRoot 'cloudflared.exe'
 $serverLog = Join-Path $PSScriptRoot 'model-server.log'
 $tunnelLog = Join-Path $PSScriptRoot 'model-tunnel.log'
+$frontendLog = Join-Path $PSScriptRoot 'frontend-server.log'
+$frontendErrLog = Join-Path $PSScriptRoot 'frontend-server-errors.log'
 $server = $null
 $tunnel = $null
+$frontend = $null
 Set-Location $root
 
 function Assert-Success($message) {
@@ -120,13 +123,13 @@ try {
     } catch {
         if ($_.Exception.Message -like 'Port 8080*') { throw }
     }
-    Remove-Item $serverLog, $tunnelLog -Force -ErrorAction SilentlyContinue
+    Remove-Item $serverLog, $tunnelLog, $frontendLog, $frontendErrLog -Force -ErrorAction SilentlyContinue
     $env:INFERENCE_SECRET = $secret
-    $server = Start-Process -FilePath $venvPython -ArgumentList 'model-service/server.py' -WorkingDirectory $root -PassThru -RedirectStandardOutput $serverLog -RedirectStandardError (Join-Path $PSScriptRoot 'model-server-errors.log')
+    $server = Start-Process -FilePath $venvPython -ArgumentList 'model-service/server.py' -WorkingDirectory $root -WindowStyle Hidden -PassThru -RedirectStandardOutput $serverLog -RedirectStandardError (Join-Path $PSScriptRoot 'model-server-errors.log')
     Wait-ForHealth 'http://127.0.0.1:8080' 90
     Write-Host 'Model is ready locally.'
 
-    $tunnel = Start-Process -FilePath $cloudflared -ArgumentList 'tunnel --url http://127.0.0.1:8080' -WorkingDirectory $root -PassThru -RedirectStandardOutput (Join-Path $PSScriptRoot 'model-tunnel-out.log') -RedirectStandardError $tunnelLog
+    $tunnel = Start-Process -FilePath $cloudflared -ArgumentList 'tunnel --url http://127.0.0.1:8080' -WorkingDirectory $root -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $PSScriptRoot 'model-tunnel-out.log') -RedirectStandardError $tunnelLog
     $url = $null
     for ($i = 0; $i -lt 60; $i++) {
         Start-Sleep -Seconds 1
@@ -168,12 +171,44 @@ try {
     }
     if (-not $workerReady) { throw 'The deployed Worker could not authenticate its connection to this tunnel. Do not start a match.' }
     Remove-Item Env:INFERENCE_SECRET -ErrorAction SilentlyContinue
-    Write-Host "Model is ONLINE through $url"
-    Write-Host 'Vercel uses the game Worker URL already configured in the frontend. Keep this window open while anyone plays.'
-    Write-Host 'Only one laptop should host this Worker at a time. Closing this window stops AI judging until the next start.'
-    while (-not $server.HasExited -and -not $tunnel.HasExited) { Start-Sleep -Seconds 2 }
-    throw 'The model server or tunnel stopped unexpectedly. Restart start-model.bat to publish a new URL.'
+
+    if (-not (Test-Path (Join-Path $root 'node_modules'))) {
+        Write-Host 'Installing frontend dependencies...'
+        & npm ci
+        Assert-Success 'Could not install frontend dependencies.'
+    }
+    $frontendRunning = $false
+    try {
+        $probe = Invoke-WebRequest -Uri 'http://127.0.0.1:3000' -TimeoutSec 2 -UseBasicParsing
+        if ($probe.StatusCode -ge 200 -and $probe.StatusCode -lt 500) { $frontendRunning = $true }
+    } catch { }
+    if ($frontendRunning) {
+        Write-Host 'Frontend is already running on http://localhost:3000.'
+    } else {
+        Write-Host 'Starting frontend dev server on http://localhost:3000...'
+        $frontend = Start-Process -FilePath 'cmd.exe' -ArgumentList '/c', 'npm run dev' -WorkingDirectory $root -WindowStyle Hidden -PassThru -RedirectStandardOutput $frontendLog -RedirectStandardError $frontendErrLog
+        for ($i = 0; $i -lt 30; $i++) {
+            try {
+                $probe = Invoke-WebRequest -Uri 'http://127.0.0.1:3000' -TimeoutSec 2 -UseBasicParsing
+                if ($probe.StatusCode -ge 200 -and $probe.StatusCode -lt 500) { $frontendRunning = $true; break }
+            } catch { }
+            Start-Sleep -Seconds 1
+        }
+        if (-not $frontendRunning) { throw "Frontend failed to start on http://localhost:3000. Check $frontendErrLog" }
+    }
+
+    Write-Host ''
+    Write-Host '=== Draw It Right! ALL SERVICES ONLINE ==='
+    Write-Host 'Frontend : http://localhost:3000'
+    Write-Host 'Backend  : https://draw-it-right-match.farrellaxel2006.workers.dev'
+    Write-Host "Model    : $url (local http://127.0.0.1:8080)"
+    Write-Host 'Keep this single window open while playing. Closing it stops local services.'
+    while (-not $server.HasExited -and -not $tunnel.HasExited -and (-not $frontend -or -not $frontend.HasExited)) { Start-Sleep -Seconds 2 }
+    throw 'One of the services (model, tunnel, or frontend) stopped unexpectedly. Restart start-model.bat.'
 } finally {
+    if ($frontend -and -not $frontend.HasExited) {
+        & taskkill /PID $frontend.Id /T /F 2>$null | Out-Null
+    }
     if ($tunnel -and -not $tunnel.HasExited) { Stop-Process -Id $tunnel.Id -Force -ErrorAction SilentlyContinue }
     if ($server -and -not $server.HasExited) { Stop-Process -Id $server.Id -Force -ErrorAction SilentlyContinue }
     Remove-Item Env:INFERENCE_SECRET -ErrorAction SilentlyContinue
